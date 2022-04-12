@@ -8,7 +8,7 @@ checkpoints/
 __pycache__/
 *.py[cod]
 *$py.class
-
+result.txt
 # C extensions
 *.so
 
