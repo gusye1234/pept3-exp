@@ -100,7 +100,7 @@ for epoch in range(TRAIN_EPOCHS):
         # if not writer.start:
         #     writer.add_graph(model, data)
         #     writer.start = True
-        
+
         pred = model(data)
         loss_b = loss_fn(data['intensities_raw'], pred)
         optimizer.zero_grad()

@@ -93,16 +93,10 @@ def loc_msms_in_raw(data, raws_dir):
             for i, line in enumerate(read):
                 if i == 0:
                     continue
-                fields = line.strip().split(',')
-                try:
-                    scan_number = int(fields[0])
-                except:
-                    print(fields[0], "unable to parse")
-                    continue
-                all_lines.append(fields)
+                all_lines.append(line.strip().split(','))
             all_lines.sort(key=lambda x: int(x[0]))
-        # print([x[0] for x in all_lines][-20:])
-        # print([x[1] for x in scans][29486:29486+20])
+        # print([x[0] for x in all_lines][80:180])
+        # print([x[1] for x in scans][40:50])
         for i, line in enumerate(all_lines):
             # if i == 0:
             #     continue
@@ -117,7 +111,7 @@ def loc_msms_in_raw(data, raws_dir):
                 break
         total_spect += len(scans)
         if index_now < len(scans):
-            print(f"{f} -- Not match spect: No.{index_now}-{scans[index_now][1]} in {len(scans)}")
+            raise TypeError(f"{f} -- Not match spect: No.{index_now}-{scans[index_now][1]} in {len(scans)}")
         # print("Done", f)
     return matches
 
@@ -201,12 +195,7 @@ def test_model_frag(model):
         loss_test /= test_count
     print(f"----Test Loss: {loss_test:.5f}----")
 
-def filter_m_r(m_r):
-    def inten_mass_match(row):
-        return len(row[1][2].split(' ')) == len(row[1][3].split(' '))
-    data = [m for m in m_r if inten_mass_match(m)]
-    return data
-    
+
 def generate_matched_ions(matches):
     re = []
     for m in matches:
@@ -347,9 +336,9 @@ def get_irt_all(run_model, data_cand):
     return all_rt
 
 
-def get_sa_all(run_model, data_nce_cand, frag_msms, gpu_index=0, **kwargs):
+def get_sa_all(run_model, data_nce_cand, frag_msms, pearson=False):
     if torch.cuda.is_available():
-        device = torch.device(f"cuda:{gpu_index}")
+        device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
@@ -370,16 +359,19 @@ def get_sa_all(run_model, data_nce_cand, frag_msms, gpu_index=0, **kwargs):
         data = perpare_data(*data_nce_cand)
         sass = []
         pred_tensor = []
-        for b in range(0, len(frag_msms), 512):
-            d = {k: v[b:b+512] for k, v in data.items()}
+        for b in range(0, len(frag_msms), 2048):
+            d = {k: v[b:b+2048] for k, v in data.items()}
             pred = run_model(d)
-            gt_frag = to_tensor(frag_msms[b:b+512]).to(device)
+            gt_frag = to_tensor(frag_msms[b:b+2048]).to(device)
             # gt_frag = gt_frag/gt_frag.max()
-            sas, pred = helper.predict_sa(gt_frag, pred, d)
+            if not pearson:
+                sas, pred = helper.predict_sa(gt_frag, pred, d)
+            else:
+                sas, pred = helper.predict_pearson(gt_frag, pred, d)
             # check_empty = torch.any(d['peptide_mask'], dim=1)
             # sas[~check_empty] = 0.
-            sass.append(sas.cpu())
-            pred_tensor.append(pred.cpu())
+            sass.append(sas)
+            pred_tensor.append(pred)
         all_sa = torch.cat(sass, dim=0)
         all_pred = torch.cat(pred_tensor, dim=0)
     return all_sa, all_pred
@@ -452,43 +444,6 @@ def get_sa_all_scale(run_model, data_nce_cand, frag_msms, inten_scales):
             sas, pred = helper.predict_sa_scale(gt_frag, pred, d, scales)
             # check_empty = torch.any(d['peptide_mask'], dim=1)
             # sas[~check_empty] = 0.
-            sass.append(sas)
-            pred_tensor.append(pred)
-        all_sa = torch.cat(sass, dim=0)
-        all_pred = torch.cat(pred_tensor, dim=0)
-    return all_sa, all_pred
-
-def get_sa_random_all(run_model, frag_msms):
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-
-    def perpare_data(seqs, nces, charges):
-        seqs = torch.from_numpy(seqs)
-        nces = torch.from_numpy(nces).unsqueeze(1)
-        charges = torch.from_numpy(charges)
-        data = {}
-        data["sequence_integer"] = seqs.to(device)
-        data["collision_energy_aligned_normed"] = nces.to(device)
-        data['precursor_charge_onehot'] = charges.to(device)
-        data['peptide_mask'] = ms.helper.create_mask(seqs).to(device)
-        return data
-
-    run_model = run_model.to(device)
-    run_model = run_model.eval()
-    with torch.no_grad():
-        data = perpare_data(*data_nce_cand)
-        sass = []
-        pred_tensor = []
-        for b in range(0, len(frag_msms), 2048):
-            d = {k: v[b:b+2048] for k, v in data.items()}
-            pred = run_model(d)
-            gt_frag = to_tensor(frag_msms[b:b+2048]).to(device)
-            gt_frag = gt_frag/gt_frag.max()
-            sas = helper.predict_sa(gt_frag, pred, d)
-            check_empty = torch.any(d['peptide_mask'], dim=1)
-            sas[~check_empty] = 0.
             sass.append(sas)
             pred_tensor.append(pred)
         all_sa = torch.cat(sass, dim=0)
@@ -632,7 +587,6 @@ def save_m_r_ions(msms_file, raw_dir, sample_size=None):
     msms_data.sort(key=lambda x: int(x[name.index("id")]))
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
-    m_r = filter_m_r(m_r)
     print(len(msms_data), len(m_r))
     matched_ions_pre = generate_matched_ions(m_r)
     matched_ions_pre_delta = generate_matched_ions_delta(m_r)

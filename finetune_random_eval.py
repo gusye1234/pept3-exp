@@ -8,7 +8,7 @@ import torch
 import pandas as pd
 from contextlib import redirect_stdout
 sys.path.append("./figs")
-from fdr_test import fdr_test, fixed_features
+from fdr_test import fdr_test, fixed_features, fixed_features_random
 
 # from figs.fdr_test import fdr_test_reverse
 
@@ -25,7 +25,7 @@ def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["sa", "sa"]):
     overlap = id1.intersection(id2)
     union = id1.union(id2)
     print(f"{compare}-{testfdr}:", (len(id1) - len(overlap))/len(union),
-            len(overlap)/len(union), (len(id2)-len(overlap))/len(union))
+          len(overlap)/len(union), (len(id2)-len(overlap))/len(union))
     return len(id1) - len(overlap), len(overlap), len(id2)-len(overlap)
 
 
@@ -41,7 +41,7 @@ def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fd
         fdr_test(run_model, msms_file, raw_dir, save_tab,
                  sample_size=sample_size, need_all=need_all, irt_model=irt_model, id2remove=id2remove, totest=totest, pearson=pearson)
 
-    print(" start percolator... ", end='')
+    print(" start percolator... ")
     for name in totest:
         start = time()
         os.system(f"percolator -v 0 --weights {save_tab}/{name}_weights.csv \
@@ -173,17 +173,17 @@ if __name__ == "__main__":
         # combined_tab = combined_eval_fdr(save_tab1, save_tab2)
         # overlap_analysis(save_tab1, combined_tab, )
 
-        # tabels_file = fixed_features(
-        #     msms_file, raw_dir, f"/data/prosit/figs/figure6/{which}/percolator/try/prosit_l1")
-        # finetune_model, id2remove = finetune.semisupervised_finetune(
-        #     run_model, tabels_file, pearson=if_pearson)
+        tabels_file, random_matches = fixed_features_random(
+            msms_file, raw_dir, f"/data/prosit/figs/figure6/{which}/percolator/try/prosit_l1")
+        finetune_model, id2remove = finetune.semisupervised_finetune(
+            run_model, tabels_file, pearson=if_pearson, enable_test=True)
 
         # print(eval_fdr(run_model, msms_file, raw_dir, save_tab1,
         #       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
 
         # print(eval_fdr(finetune_model, msms_file, raw_dir, save_tab2,
         #       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
-        analysis_dict[which] = overlap_analysis(save_tab1, save_tab2)
+        # analysis_dict[which] = overlap_analysis(save_tab1, save_tab2)
 
     for which in ["trypsin", 'chymo', "lysc", "gluc"]:
         print("-------------------------------")
@@ -194,22 +194,23 @@ if __name__ == "__main__":
         msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
         raw_dir = f"/data/prosit/figs/fig235/{which}/raw"
 
-        tabels_file = fixed_features(msms_file, raw_dir,
-                                     f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1")
         save_tab1 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/no_finetuned"
         if not os.path.exists(save_tab1):
             os.mkdir(save_tab1)
         save_tab2 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned"
         if not os.path.exists(save_tab2):
             os.mkdir(save_tab2)
-        # finetune_model, id2remove = finetune.semisupervised_finetune(
-        #     run_model, tabels_file, pearson=if_pearson)
+
+        tabels_file, random_matches = fixed_features_random(msms_file, raw_dir,
+                                     f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1")
+        finetune_model, id2remove = finetune.semisupervised_finetune(
+            run_model, tabels_file, pearson=if_pearson, enable_test=True)
         # print(eval_fdr(run_model, msms_file, raw_dir, save_tab1,
         #       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
 
         # print(eval_fdr(finetune_model, msms_file, raw_dir, save_tab2,
         #       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
-        analysis_dict[which] = overlap_analysis(save_tab1, save_tab2)
+        # analysis_dict[which] = overlap_analysis(save_tab1, save_tab2)
 
     print("-------------------------------")
     print("Davis")
@@ -219,8 +220,6 @@ if __name__ == "__main__":
     msms_file = f"/data/prosit/figs/figure5/maxquant/combined/txt/msms.txt"
     raw_dir = f"/data/prosit/figs/figure5/raw"
 
-    tabels_file = fixed_features(msms_file, raw_dir,
-                                    f"/data/prosit/figs/figure5/percolator/try/prosit_l1")
     save_tab1 = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned"
     if not os.path.exists(save_tab1):
         os.mkdir(save_tab1)
@@ -228,6 +227,8 @@ if __name__ == "__main__":
     if not os.path.exists(save_tab2):
         os.mkdir(save_tab2)
 
+    tabels_file, random_matches = fixed_features_random(msms_file, raw_dir,
+                                 f"/data/prosit/figs/figure5/percolator/try/prosit_l1")
     # finetune_model, id2remove = finetune.semisupervised_finetune(
     #     run_model, tabels_file)
     # print(eval_fdr(run_model, msms_file, raw_dir, save_tab1,
@@ -235,5 +236,5 @@ if __name__ == "__main__":
 
     # print(eval_fdr(finetune_model, msms_file, raw_dir, save_tab2,
     #         irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove).to_string())
-    analysis_dict["davis"] = overlap_analysis(save_tab1, save_tab2)
-    print(analysis_dict)
+    # analysis_dict["davis"] = overlap_analysis(save_tab1, save_tab2)
+    # print(analysis_dict)

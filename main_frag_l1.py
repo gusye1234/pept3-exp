@@ -4,7 +4,7 @@ import torch
 import json
 from ms import helper
 import sys
-from ms.model import TransPro, PrositFrag, TransProBest
+from ms.model import TransProBest, PrositFrag, pDeep2_nomod
 from tqdm import tqdm
 from ms.dataset import FragDataset, IrtDataset
 from torch.utils.data import DataLoader
@@ -70,14 +70,15 @@ else:
     device = torch.device("cpu")
 print("Run on", device)
 
-model = TransProBest().to(device)
-# model = PrositFrag().to(device)
+# model = TransProBest().to(device)
+model = PrositFrag().to(device)
+# model = pDeep2_nomod().to(device)
 print(model.comment())
 optimizer = torch.optim.AdamW(
     model.parameters(), lr=0.001, eps=1e-8)
 
 base_loss_fn = helper.spectral_distance
-loss_fn = helper.L1Loss(loss_fn=base_loss_fn, lambdaa=0.0001)
+loss_fn = helper.L1Loss(loss_fn=base_loss_fn, lambdaa=0.00001)
 
 interval = 100
 choice = 'irt'
@@ -101,10 +102,6 @@ for epoch in range(TRAIN_EPOCHS):
         train_count += 1
         data = {k: v.to(device) for k, v in data.items()}
         data["peptide_mask"] = helper.create_mask(data['sequence_integer'])
-        # if not writer.start:
-        #     writer.add_graph(model, data)
-        #     writer.start = True
-
         pred = model(data)
         loss_b, sa_loss, l1_loss = loss_fn(data['intensities_raw'], pred)
         optimizer.zero_grad()

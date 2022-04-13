@@ -1,15 +1,14 @@
 import sys
 sys.path.append("./figs")
-from contextlib import redirect_stdout
-import pandas as pd
-import torch
-import os
-from time import time
-from ms import helper
-from ms import model
-from ms import finetune
 from fdr_test import fdr_test, fixed_features, fdr_test_twofold
-
+from ms import finetune
+from ms import model
+from ms import helper
+from time import time
+import os
+import torch
+import pandas as pd
+from contextlib import redirect_stdout
 
 # from figs.fdr_test import fdr_test_reverse
 
@@ -30,7 +29,7 @@ def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["sa", "sa"]):
     return len(id1) - len(overlap), len(overlap), len(id2)-len(overlap)
 
 
-def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None, id2remove=None, pearson=False, gpu_index=0):
+def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None, id2remove=None, pearson=False):
     run_model1 = run_model1.eval()
     run_model2 = run_model2.eval()
 
@@ -42,7 +41,7 @@ def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold
 
     with torch.no_grad():
         fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab,
-                         sample_size=sample_size, need_all=need_all, irt_model=irt_model, id2remove=id2remove, totest=totest, pearson=pearson, gpu_index=gpu_index)
+                 sample_size=sample_size, need_all=need_all, irt_model=irt_model, id2remove=id2remove, totest=totest, pearson=pearson)
 
     print(" start percolator... ")
     for name in totest:
@@ -126,40 +125,93 @@ if __name__ == "__main__":
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "prosit_cid"
-    if frag_model == "prosit_cid":
-        run_model = model.PrositFrag()
+    frag_model = "prosit_l1"
+    if frag_model == "trans":
+        run_model = model.TransProBest()
         run_model.load_state_dict(torch.load(
-            "./checkpoints/frag_boosting/best_cid_frag_PrositFrag-512.pth", map_location="cpu"))
+            "./checkpoints/best/best_valid_frag_TransPro-6-3-128-0.1-256-1048.pth", map_location="cpu"))
         run_model = run_model.eval()
-    elif frag_model == "prosit_hcd":
+    elif frag_model == "trans_l1":
+        run_model = model.TransProBest()
+        run_model.load_state_dict(torch.load(
+            "/home/gus/Desktop/ms_pred/checkpoints/frag/best_frag_l1_TransProBest-6-3-128-0.1-256-1024.pth", map_location="cpu"))
+        run_model = run_model.eval()
+    elif frag_model == "prosit":
         run_model = model.PrositFrag()
         run_model.load_state_dict(torch.load(
-            "./checkpoints/frag_boosting/best_hcd_frag_PrositFrag-512.pth", map_location="cpu"))
+            "./checkpoints/best/best_valid_irt_PrositFrag-1024.pth", map_location="cpu"))
         run_model = run_model.eval()
     elif frag_model == "prosit_l1":
         run_model = model.PrositFrag()
         run_model.load_state_dict(torch.load(
-            "./checkpoints/frag_boosting/best_frag_l1_PrositFrag-1024.pth", map_location="cpu"))
+            "/home/gus/Desktop/ms_pred/checkpoints/best/best_frag_l1_PrositFrag-1024.pth", map_location="cpu"))
+        run_model = run_model.eval()
+    elif frag_model == "pdeep2":
+        run_model = model.pDeep2_nomod()
+        run_model.load_state_dict(torch.load(
+            "/home/gus/Desktop/ms_pred/checkpoints/best/best_frag_l1_pDeep2-1024.pth", map_location="cpu"))
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 3
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
     analysis_dict = {}
-    for which in ["HLA_2", "Mel1", "HLA_1"]:
+    # "sprot_human", "IGC",
+    for which in ["sprot_all", "sprot_bacteria_human"]:
         print("-------------------------------")
         print(which)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/percolator/{frag_model}_finetune/finetuned_twofold"
+        save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        msms_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/txt/msms.txt"
-        raw_dir = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/raw"
+        msms_file = f"/data/prosit/figs/figure6/{which}/maxquant/txt/msms.txt"
+        raw_dir = f"/data/prosit/figs/figure6/all_raws"
+
+        save_tab2 = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/finetuned_twofold"
+        if not os.path.exists(save_tab2):
+            os.mkdir(save_tab2)
+
+        tabels_file = fixed_features(
+            msms_file, raw_dir, f"/data/prosit/figs/figure6/{which}/percolator/try/prosit_l1")
+        finetune_model1, finetuned_model2, id2remove = finetune.semisupervised_finetune_twofold(
+            run_model, tabels_file, pearson=if_pearson, only_id2remove=False)
+        print(eval_fdr(finetune_model1, finetuned_model2, msms_file, raw_dir, save_tab2,
+              irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
+
+    for which in ["trypsin", 'chymo', "lysc", "gluc"]:
+        print("-------------------------------")
+        print(which)
+        save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}"
+        if not os.path.exists(save_tab):
+            os.mkdir(save_tab)
+        msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
+        raw_dir = f"/data/prosit/figs/fig235/{which}/raw"
 
         tabels_file = fixed_features(msms_file, raw_dir,
-                                     f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/fix_features/")
+                                     f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1")
+        save_tab2 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_twofold"
+        if not os.path.exists(save_tab2):
+            os.mkdir(save_tab2)
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-            run_model, tabels_file, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False)
-        print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab,
-              irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())
+            run_model, tabels_file, pearson=if_pearson)
+        print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab2,
+              irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
+
+    print("-------------------------------")
+    print("Davis")
+    save_tab = f"/data/prosit/figs/figure5/percolator/try/{frag_model}"
+    if not os.path.exists(save_tab):
+        os.mkdir(save_tab)
+    msms_file = f"/data/prosit/figs/figure5/maxquant/combined/txt/msms.txt"
+    raw_dir = f"/data/prosit/figs/figure5/raw"
+
+    tabels_file = fixed_features(msms_file, raw_dir,
+                                 f"/data/prosit/figs/figure5/percolator/try/prosit_l1")
+    save_tab2 = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/finetuned_twofold"
+    if not os.path.exists(save_tab2):
+        os.mkdir(save_tab2)
+
+    finetune_model1, finietune_model2, id2remove = finetune.semisupervised_finetune_twofold(
+        run_model, tabels_file)
+
+    print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab2,
+            irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())

@@ -69,11 +69,6 @@ def get_annotation(forward, backward, charge, ion_types, offset=0):
         masses = get_mzs(cummass, ion_type, charge)
         d = {tmp.format(ion_type, i + 1): m for i, m in enumerate(masses)}
         all_.update(d)
-        # for nl, offset in constants.NEUTRAL_LOSS.items():
-        #     nl_masses = get_mzs(cummass - offset, ion_type, charge)
-        #     d = {tmp_nl.format(ion_type, i + 1, nl): m for i,
-        #          m in enumerate(nl_masses)}
-        #     all_.update(d)
     return collections.OrderedDict(sorted(all_.items(), key=lambda t: t[0]))
 
 def reverse_annotation(matches, intensities, charges, length):
@@ -113,14 +108,7 @@ def read_attribute(row, attribute):
     if " " not in str(row[attribute]):
         return []
     else:
-        atts = []
-        for m in row[attribute].split(" "):
-            try:
-                fm = float(m)
-            except:
-                fm = 0.
-            atts.append(fm)
-        return atts
+        return [float(m) for m in row[attribute].split(" ")]
 
 
 # def peptide_parser(p):
@@ -181,6 +169,7 @@ def binarysearch(masses_raw, theoretical, mass_analyzer):
             hi = mid - 1
     return None
 
+
 def pair_backbone_with_mass(pred_inten, peptide, charge):
     import re
     tmp = re.compile(r"(y|x|a|b)(\d+)$")
@@ -188,18 +177,20 @@ def pair_backbone_with_mass(pred_inten, peptide, charge):
     forward_sum, backward_sum = get_forward_backward(peptide)
     pred_inten = pred_inten.reshape(29, 2, 3)
     ion_dict = {
-        'y':0, 'b':1
+        'y': 0, 'b': 1
     }
     # result[frag_i-1, ion_dict[ion], charge-1] = float(inten)
     intens = []
     masses = []
+    annos = []
     for c_index in range(max(charge, 3)):
         annotations = get_annotation(
-                forward_sum, backward_sum, c_index + 1, "by"
+            forward_sum, backward_sum, c_index + 1, "by"
         )
         for anno, mass_t in annotations.items():
             match = re.match(tmp, anno)
             if match:
+                annos.append(anno)
                 ion = match.group(1)
                 frag_i = int(match.group(2))
                 intens.append(pred_inten[frag_i-1, ion_dict[ion], c_index])
@@ -209,7 +200,6 @@ def pair_backbone_with_mass(pred_inten, peptide, charge):
 def match(row, ion_types, max_charge=constants.DEFAULT_MAX_CHARGE):
     masses_observed = read_attribute(row, "masses_raw")
     intensities_observed = read_attribute(row, "intensities_raw")
-    
     forward_sum, backward_sum = get_forward_backward(
         row['modified_sequence'])
     _max_charge = row['charge'] if row['charge'] <= max_charge else max_charge
@@ -228,18 +218,13 @@ def match(row, ion_types, max_charge=constants.DEFAULT_MAX_CHARGE):
         for annotation, mass_t in annotations.items():
             index = binarysearch(masses_observed, mass_t, row['mass_analyzer'])
             if index is not None:
-                try:
-                    d["masses_raw"].append(masses_observed[index])
-                    d["intensities_raw"].append(intensities_observed[index])
-                    d["masses_theoretical"].append(mass_t)
-                    d["matches"].append(annotation)
-                except:
-                    print(len(masses_observed), len(intensities_observed))
-                    print(index)
-                    
-                    raise
+                d["masses_raw"].append(masses_observed[index])
+                d["intensities_raw"].append(intensities_observed[index])
+                d["masses_theoretical"].append(mass_t)
+                d["matches"].append(annotation)
         matches[charge] = d
     return matches
+
 
 def match_all(row, ion_types='yb', max_charge=constants.DEFAULT_MAX_CHARGE):
     matches = match(row, ion_types, max_charge)
