@@ -10,14 +10,15 @@ from fdr_test import fdr_test, fixed_features
 from ms import model
 from ms import finetune
 
-def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001],sample_size=None, need_all=False, irt_model=None, pearson=False):
+
+def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.01, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None, pearson=False):
     run_model = run_model.eval()
     record = {}
-    record['fdrs'] = [100*i for i in show_fdr]
+    record['fdrs'] = [100 * i for i in show_fdr]
     with torch.no_grad():
         fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=sample_size,
                  need_all=need_all, irt_model=irt_model, pearson=pearson)
-    
+
     totest = ["andromeda", "sa", "prosit_combined"]
     if irt_model is not None:
         totest.append("prosit_best")
@@ -36,13 +37,14 @@ def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fd
 
     return pd.DataFrame(record)
 
+
 if __name__ == "__main__":
     run_model = model.PrositIRT()
     run_model.load_state_dict(torch.load(
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "pdeep2"
+    frag_model = "prosit_l1"
     if frag_model == "trans":
         run_model = model.TransProBest()
         run_model.load_state_dict(torch.load(
@@ -80,7 +82,8 @@ if __name__ == "__main__":
             os.mkdir(save_tab)
         msms_file = f"/data/prosit/figs/figure6/{which}/maxquant/txt/msms.txt"
         raw_dir = f"/data/prosit/figs/figure6/all_raws"
-        print(eval_fdr(run_model, msms_file, raw_dir, save_tab, irt_model=prosit_irt, sample_size=sample_size, pearson=if_pearson).to_string())
+        print(eval_fdr(run_model, msms_file, raw_dir, save_tab, irt_model=prosit_irt,
+              sample_size=sample_size, pearson=if_pearson).to_string())
 
     # from pprint import pprint
     for which in ["trypsin", 'chymo', "lysc", "gluc"]:
@@ -91,7 +94,8 @@ if __name__ == "__main__":
             os.mkdir(save_tab)
         msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
         raw_dir = f"/data/prosit/figs/fig235/{which}/raw"
-        print(eval_fdr(run_model, msms_file, raw_dir, save_tab, irt_model=prosit_irt, sample_size=sample_size, pearson=if_pearson).to_string())
+        print(eval_fdr(run_model, msms_file, raw_dir, save_tab, irt_model=prosit_irt,
+              sample_size=sample_size, pearson=if_pearson).to_string())
     print("-------------------------------")
     print("Davis")
     save_tab = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_twofold"
@@ -99,4 +103,5 @@ if __name__ == "__main__":
         os.mkdir(save_tab)
     msms_file = f"/data/prosit/figs/figure5/maxquant/combined/txt/msms.txt"
     raw_dir = f"/data/prosit/figs/figure5/raw"
-    print(eval_fdr(run_model, msms_file, raw_dir, save_tab, irt_model=prosit_irt, sample_size=sample_size, pearson=if_pearson).to_string())
+    print(eval_fdr(run_model, msms_file, raw_dir, save_tab, irt_model=prosit_irt,
+          sample_size=sample_size, pearson=if_pearson).to_string())

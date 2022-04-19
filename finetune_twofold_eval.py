@@ -1,14 +1,15 @@
 import sys
 sys.path.append("./figs")
-from fdr_test import fdr_test, fixed_features, fdr_test_twofold
-from ms import finetune
-from ms import model
-from ms import helper
-from time import time
-import os
-import torch
-import pandas as pd
 from contextlib import redirect_stdout
+import pandas as pd
+import torch
+import os
+from time import time
+from ms import helper
+from ms import model
+from ms import finetune
+from fdr_test import fdr_test, fixed_features, fdr_test_twofold
+
 
 # from figs.fdr_test import fdr_test_reverse
 
@@ -24,9 +25,9 @@ def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["sa", "sa"]):
     id2 = set(table2[table2['q-value'] < testfdr]['PSMId'])
     overlap = id1.intersection(id2)
     union = id1.union(id2)
-    print(f"{compare}-{testfdr}:", (len(id1) - len(overlap))/len(union),
-          len(overlap)/len(union), (len(id2)-len(overlap))/len(union))
-    return len(id1) - len(overlap), len(overlap), len(id2)-len(overlap)
+    print(f"{compare}-{testfdr}:", (len(id1) - len(overlap)) / len(union),
+          len(overlap) / len(union), (len(id2) - len(overlap)) / len(union))
+    return len(id1) - len(overlap), len(overlap), len(id2) - len(overlap)
 
 
 def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None, id2remove=None, pearson=False):
@@ -34,14 +35,14 @@ def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold
     run_model2 = run_model2.eval()
 
     record = {}
-    record['fdrs'] = [100*i for i in show_fdr]
+    record['fdrs'] = [100 * i for i in show_fdr]
     totest = ["andromeda", "sa", "prosit_combined"]
     if irt_model is not None:
         totest.append("prosit_best")
 
     with torch.no_grad():
         fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab,
-                 sample_size=sample_size, need_all=need_all, irt_model=irt_model, id2remove=id2remove, totest=totest, pearson=pearson)
+                         sample_size=sample_size, need_all=need_all, irt_model=irt_model, id2remove=id2remove, totest=totest, pearson=pearson)
 
     print(" start percolator... ")
     for name in totest:
@@ -51,6 +52,7 @@ def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold
                 --results-psms {save_tab}/{name}_target.psms \
                 --decoy-results-psms {save_tab}/{name}_decoy.psms \
                 {save_tab}/{name}.tab")
+        os.remove(f"{save_tab}/{name}.tab")
         target_tab = pd.read_csv(os.path.join(
             save_tab, f"{name}_target.psms"), sep='\t')
         record[name] = []
@@ -69,7 +71,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
         os.mkdir(combined_dir)
     totest = ['prosit_combined', "prosit_best"]
     record = {}
-    record['fdrs'] = [100*i for i in show_fdr]
+    record['fdrs'] = [100 * i for i in show_fdr]
     print("Re-evaluate no finetuned")
     for name in totest:
         os.system(f"percolator -v 0 --weights {combined_dir}/{name}_weights_nofinetuned.csv \
@@ -79,7 +81,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
                 {no_finetuned_dir}/{name}.tab")
         target_tab = pd.read_csv(os.path.join(
             combined_dir, f"{name}_target_nofinetuned.psms"), sep='\t')
-        record[name+"_no_finetuned"] = []
+        record[name + "_no_finetuned"] = []
         for fdr in show_fdr:
             record[name +
                    "_no_finetuned"].append((target_tab['q-value'] < fdr).sum())
@@ -92,7 +94,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
                 {finetuned_dir}/{name}.tab")
         target_tab = pd.read_csv(os.path.join(
             combined_dir, f"{name}_target_finetuned.psms"), sep='\t')
-        record[name+"_finetuned"] = []
+        record[name + "_finetuned"] = []
         for fdr in show_fdr:
             record[name +
                    "_finetuned"].append((target_tab['q-value'] < fdr).sum())
@@ -111,7 +113,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
                 {combined_dir}/combined_{name}.tab")
         target_tab = pd.read_csv(os.path.join(
             combined_dir, f"{name}_target_combined.psms"), sep='\t')
-        record[name+"_combined"] = []
+        record[name + "_combined"] = []
         for fdr in show_fdr:
             record[name +
                    "_combined"].append((target_tab['q-value'] < fdr).sum())
@@ -125,7 +127,7 @@ if __name__ == "__main__":
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "prosit_l1"
+    frag_model = "pdeep2"
     if frag_model == "trans":
         run_model = model.TransProBest()
         run_model.load_state_dict(torch.load(
@@ -156,8 +158,8 @@ if __name__ == "__main__":
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
     analysis_dict = {}
-    # "sprot_human", "IGC",
-    for which in ["sprot_all", "sprot_bacteria_human"]:
+    # ,
+    for which in ["sprot_human", "IGC", "sprot_all", "sprot_bacteria_human"]:
         print("-------------------------------")
         print(which)
         save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}"
@@ -176,7 +178,6 @@ if __name__ == "__main__":
             run_model, tabels_file, pearson=if_pearson, only_id2remove=False)
         print(eval_fdr(finetune_model1, finetuned_model2, msms_file, raw_dir, save_tab2,
               irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
-
     for which in ["trypsin", 'chymo', "lysc", "gluc"]:
         print("-------------------------------")
         print(which)
@@ -214,4 +215,4 @@ if __name__ == "__main__":
         run_model, tabels_file)
 
     print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab2,
-            irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
+                   irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())

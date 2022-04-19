@@ -186,7 +186,8 @@ def fixed_features_random(msms_file, raw_dir, save_tab, over_write=False):
     save2 = os.path.splitext(msms_file)[0]+"_random_peaks.txt"
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
-
+    
+    print(save2, os.path.exists(save2))
     if not os.path.exists(save2):
         print("Ions generating[random version]")
         all_ids = np.array([int(p[0][name.index("id")]) for p in m_r])
