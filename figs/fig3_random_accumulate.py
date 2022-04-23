@@ -11,8 +11,9 @@ def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Dec
     plt.style.use(['ieee', "high-vis", 'no-latex'])
     plt.rcParams["font.family"] = "DejaVu Sans"
 
-    fig, axs = plt.subplots(2, figsize=(4, 4))
-    for i, ax in enumerate(axs):
+    fig, ax = plt.subplots(figsize=(4, 4), dpi=100)
+    target_c = ['blue', 'green']
+    for i in range(2):
         if i == 0:
             t_value = np.abs(targets)
             d_value = np.abs(decoys)
@@ -23,31 +24,66 @@ def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Dec
         t_v, t_base = np.histogram(t_value, bins=1000)
         d_v, d_base = np.histogram(d_value, bins=1000)
 
-        t_cum_sum = np.cumsum(t_v[::-1])[::-1] / len(t_value)
-        d_cum_sum = np.cumsum(d_v[::-1])[::-1] / len(d_value)
+        t_cum_sum = np.cumsum(t_v) / len(t_value)
+        d_cum_sum = np.cumsum(d_v) / len(d_value)
 
-        ax.set_xlim((0, 1))
-        ax.invert_xaxis()
-        print(t_base.shape)
-        print(d_base.shape)
-        ax.plot(t_base[:-1], t_cum_sum, label=names[0])
-        ax.plot(d_base[:-1], d_cum_sum, label=names[1])
-
-        if i == 0:
-            ax.legend(loc="upper left")
-        if i == 1:
-            ax.set_xlabel("Spectral Angle", fontsize=10)
-        # ax.set_ylabel("Cumulative Distribution", fontsize=10)
-        if i == 0:
-            ax.set_title("No Fine-tuned", fontsize=10)
-        else:
-            ax.set_title("Fine-tuned", fontsize=10)
-    fig.text(-0.02, 0.5, 'Cumulative Distribution',
-             va='center', rotation='vertical', fontsize=10)
-    fig.tight_layout()
+        prefix = "No FT " if i == 0 else "FT "
+        ax.plot(t_base[:-1], t_cum_sum, label=prefix +
+                names[0], linestyle='-')
+        ax.plot(d_base[:-1], d_cum_sum, label=prefix +
+                names[1], linestyle="--")
+    ax.set_xlabel("Spectral Angle", fontsize=10)
+    ax.set_ylabel('Cumulative Distribution', fontsize=10)
+    ax.legend(loc="lower right")
+    ax.set_xlim((0, 1))
+    # ax.invert_xaxis()
     fig.savefig(
         f"fig/fig3-cumulative-curve-{frag_model}-{which}.pdf", dpi=300, bbox_inches="tight")
     mpl.rcParams.update(mpl.rcParamsDefault)
+
+# def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Decoy"], which='', frag_model=''):
+#     import matplotlib as mpl
+
+#     plt.style.use(['ieee', "high-vis", 'no-latex'])
+#     plt.rcParams["font.family"] = "DejaVu Sans"
+
+#     fig, axs = plt.subplots(2, figsize=(4, 4))
+#     for i, ax in enumerate(axs):
+#         if i == 0:
+#             t_value = np.abs(targets)
+#             d_value = np.abs(decoys)
+#         else:
+#             t_value = np.abs(targets_f)
+#             d_value = np.abs(decoys_f)
+
+#         t_v, t_base = np.histogram(t_value, bins=1000)
+#         d_v, d_base = np.histogram(d_value, bins=1000)
+
+#         t_cum_sum = np.cumsum(t_v[::-1])[::-1] / len(t_value)
+#         d_cum_sum = np.cumsum(d_v[::-1])[::-1] / len(d_value)
+
+#         ax.set_xlim((0, 1))
+#         ax.invert_xaxis()
+#         print(t_base.shape)
+#         print(d_base.shape)
+#         ax.plot(t_base[:-1], t_cum_sum, label=names[0])
+#         ax.plot(d_base[:-1], d_cum_sum, label=names[1])
+
+#         if i == 0:
+#             ax.legend(loc="upper left")
+#         if i == 1:
+#             ax.set_xlabel("Spectral Angle", fontsize=10)
+#         # ax.set_ylabel("Cumulative Distribution", fontsize=10)
+#         if i == 0:
+#             ax.set_title("No Fine-tuned", fontsize=10)
+#         else:
+#             ax.set_title("Fine-tuned", fontsize=10)
+#     fig.text(-0.02, 0.5, 'Cumulative Distribution',
+#              va='center', rotation='vertical', fontsize=10)
+#     fig.tight_layout()
+#     fig.savefig(
+#         f"fig/fig3-cumulative-curve-{frag_model}-{which}.pdf", dpi=300, bbox_inches="tight")
+#     mpl.rcParams.update(mpl.rcParamsDefault)
 
 
 import sys
@@ -80,7 +116,7 @@ for which in ["trypsin", 'chymo', 'lysc', 'gluc']:
     run_model.load_state_dict(torch.load(
         checkpoints_list[frag_model], map_location="cpu"))
     prosit = run_model.eval()
-    tabels_file, random_matches = fixed_features_random(
+    tabels_file, random_match = fixed_features_random(
         msms_file, raw_dir, fixed_features_dir)
     print(tabels_file)
 
