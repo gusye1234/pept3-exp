@@ -9,6 +9,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 result.txt
+figs/fig
 # C extensions
 *.so
 
