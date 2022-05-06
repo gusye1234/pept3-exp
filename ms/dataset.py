@@ -81,7 +81,7 @@ class FragDataset:
         return x_data, y_data
 
     def split(self, ratio):
-        cutoff = int(len(self.y)*ratio)
+        cutoff = int(len(self.y) * ratio)
         return [i[:cutoff] for i in self.x], self.y[:cutoff], [i[cutoff:] for i in self.x], self.y[cutoff:]
 
     def train(self):
@@ -115,11 +115,33 @@ class TableDataset(Dataset):
 class SemiDataset:
     def __init__(self, table_input, score_init="andromeda", pi=0.9):
         self._file_input = table_input
-        self._data = pd.read_csv(table_input, sep='\t').sample(
-            frac=1, random_state=2022).reset_index(drop=True)
         self._pi = pi
-        self._frag_msms = self.backbone_spectrums()
+        if not table_input.endswith("hdf5"):
+            self._hdf5 = False
+            self._data = pd.read_csv(table_input, sep='\t').sample(
+                frac=1, random_state=2022).reset_index(drop=True)
+            self._frag_msms = self.backbone_spectrums()
 
+        else:
+            self._hdf5 = True
+            _feat = h5py.File(table_input, 'r')
+            # Peptide, Charge, collision_energy_aligned_normed, Label,
+            _label = np.array(_feat['reverse']).astype("int")
+            _label[_label == 1] = -1
+            _label[_label == 0] = 1
+            self._data = pd.DataFrame({
+                "Peptide_integer": list(np.array(_feat['sequence_integer'])),
+                "Charge_onehot": list(np.array(_feat['precursor_charge_onehot'])),
+                "Label": _label.squeeze(),
+                "andromeda": np.array(_feat['score']).squeeze(),
+                "collision_energy_aligned_normed": np.array(_feat['collision_energy_aligned_normed']).squeeze()
+            })
+            self._frag_msms = np.array(_feat['intensities_raw'])
+            order = np.arange(len(self._frag_msms))
+            np.random.shuffle(order)
+            self._data = self._data.reindex(order)
+            self._frag_msms = self._frag_msms[order]
+            print(f"Total {len(self._frag_msms)} data loader from hdf5")
         self._d, self._df, self._test_d, self._test_df = self.split_dataset()
         self.assign_train_score(self._d[score_init])
         self.assign_test_score(self._test_d[score_init])
@@ -164,21 +186,24 @@ class SemiDataset:
         decoys_frag = self._frag_msms[self._data['Label'] == -1]
         # print(f"Total {len(targets)} targets, {len(decoys)} decoys from {self._file_input}")
 
-        train_data = targets.append(decoys[:len(decoys)//2])
+        train_data = targets.append(decoys[:len(decoys) // 2])
         train_frag = np.concatenate(
-            (targets_frag, decoys_frag[:len(decoys)//2]), axis=0)
-        test_data = targets.append(decoys[len(decoys)//2:])
+            (targets_frag, decoys_frag[:len(decoys) // 2]), axis=0)
+        test_data = targets.append(decoys[len(decoys) // 2:])
         test_decoy_frag = np.concatenate(
-            (targets_frag, decoys_frag[len(decoys)//2:]), axis=0)
+            (targets_frag, decoys_frag[len(decoys) // 2:]), axis=0)
         # print(f"    {len(train_data)} PSMs will be used for training")
         return train_data, train_frag, test_data, test_decoy_frag
 
     def id2remove(self):
-        return np.array(self._d[self._d['Label'] == -1]['SpecId'])
+        if not self._hdf5:
+            return np.array(self._d[self._d['Label'] == -1]['SpecId'])
+        else:
+            return np.array(self._d[self._d['Label'] == -1].index)
 
     def q_compute(self, scores, table, pi):
-        ratio = (table['Label'] == 1).sum()/(table['Label'] == -1).sum()
-        ratio = pi*ratio
+        ratio = (table['Label'] == 1).sum() / (table['Label'] == -1).sum()
+        ratio = pi * ratio
         indexs = np.arange(len(scores))
         labels = np.array(table['Label'])
         orders = np.argsort(scores)
@@ -192,7 +217,7 @@ class SemiDataset:
         target_sum[:-1] = target_sum[1:]
         decoy_sum[:-1] = decoy_sum[1:]
 
-        fdrs = ratio*decoy_sum/(target_sum + 1e-9)
+        fdrs = ratio * decoy_sum / (target_sum + 1e-9)
         fdrs[-1] = 0
         q_values = np.zeros_like(fdrs)
         min_fdrs = np.inf
@@ -220,12 +245,24 @@ class SemiDataset:
         names = xlabel + [ylabel, "label"]
 
         y_data = torch.from_numpy(frag_msms)
-        seq_data = list(table.apply(
-            lambda x: peptide_to_inter(x['Peptide']), axis=1))
-        seq_data = torch.from_numpy(np.concatenate(seq_data))
+        if not self._hdf5:
+            seq_data = list(table.apply(
+                lambda x: peptide_to_inter(x['Peptide']), axis=1))
+            seq_data = torch.from_numpy(np.concatenate(seq_data))
+        else:
+            seq_data = [i.reshape(1, -1)
+                        for i in table['Peptide_integer'].to_list()]
+            seq_data = torch.from_numpy(
+                np.concatenate(seq_data))
 
-        charges = list(table.apply(lambda x: one_hot(x['Charge'] - 1), axis=1))
-        charges = torch.from_numpy(np.concatenate(charges))
+        if not self._hdf5:
+            charges = list(table.apply(
+                lambda x: one_hot(x['Charge'] - 1), axis=1))
+            charges = torch.from_numpy(np.concatenate(charges))
+        else:
+            charges = [i.reshape(1, -1)
+                       for i in table['Charge_onehot'].to_list()]
+            charges = torch.from_numpy(np.concatenate(charges))
 
         nces = np.array(table['collision_energy_aligned_normed'])
         nces = torch.from_numpy(nces).unsqueeze(1)
@@ -237,6 +274,9 @@ class SemiDataset:
         return names, data_sa
 
     def prepare_rt_data(self, table):
+        if self._hdf5:
+            raise NotImplementedError(
+                "h5df data is not supported for RT finetuned")
         names = ['sequence_integer', "irt", "label"]
 
         seq_data = list(table.apply(
@@ -245,7 +285,7 @@ class SemiDataset:
 
         rt = np.array(table['retention_time'])
         self._rt_mean, self._rt_std = np.mean(rt), np.std(rt)
-        rt = (rt - self._rt_mean)/self._rt_std
+        rt = (rt - self._rt_mean) / self._rt_std
         rt = torch.from_numpy(rt)
 
         labels = np.array(table['Label'])
@@ -255,10 +295,13 @@ class SemiDataset:
         return names, data_rt
 
     def prepare_data(self, table, frag_msms):
+        if self._hdf5:
+            raise NotImplementedError(
+                "h5df data is not supported for RT finetuned")
         xlabel = ["sequence_integer",
                   "precursor_charge_onehot",
                   "collision_energy_aligned_normed"]
-        names = xlabel+["intensities_raw", "irt", "label"]
+        names = xlabel + ["intensities_raw", "irt", "label"]
 
         y_data = torch.from_numpy(frag_msms)
         seq_data = list(table.apply(
@@ -273,7 +316,7 @@ class SemiDataset:
 
         rt = np.array(table['retention_time'])
         self._rt_mean, self._rt_std = np.mean(rt), np.std(rt)
-        rt = (rt - self._rt_mean)/self._rt_std
+        rt = (rt - self._rt_mean) / self._rt_std
         rt = torch.from_numpy(rt).unsqueeze(1)
 
         labels = np.array(table['Label'])
@@ -371,14 +414,14 @@ class SemiDataset:
         return PairFinetuneTableDataset(names, pos_data_sa, neg_data_sa)
 
     def supervised_sa_finetune(self):
-        names, data_sa = self.prepare_data(self._d, self._df)
+        names, data_sa = self.prepare_sa_data(self._d, self._df)
         return FinetuneTableDataset(names, data_sa)
 
     def train_all_data(self):
         return self.supervised_sa_finetune()
 
     def test_all_data(self):
-        names, data_sa = self.prepare_data(self._test_d, self._test_df)
+        names, data_sa = self.prepare_sa_data(self._test_d, self._test_df)
         return FinetuneTableDataset(names, data_sa)
 
 
@@ -410,7 +453,7 @@ class PairFinetuneTableDataset(Dataset):
         neg_re = [i[neg_index] for i in self.nx]
         pos_data = {self.names[i]: re[i] for i in range(len(re))}
         neg_data = {
-            self.names[i]+"_neg": neg_re[i].squeeze(0) for i in range(len(neg_re))}
+            self.names[i] + "_neg": neg_re[i].squeeze(0) for i in range(len(neg_re))}
         pos_data.update(neg_data)
         return pos_data
 

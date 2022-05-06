@@ -10,13 +10,15 @@ from fdr_test import fdr_test, fixed_features
 from ms import model
 from ms import finetune
 
-def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001],sample_size=None, irt_model=None, gpu_index=0):
+
+def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, irt_model=None, gpu_index=0):
     run_model = run_model.eval()
     record = {}
-    record['fdrs'] = [100*i for i in show_fdr]
+    record['fdrs'] = [100 * i for i in show_fdr]
     with torch.no_grad():
-        fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=sample_size, irt_model=irt_model, gpu_index=gpu_index)
-    
+        fdr_test(run_model, msms_file, raw_dir, save_tab,
+                 sample_size=sample_size, irt_model=irt_model, gpu_index=gpu_index)
+
     totest = ["andromeda", "sa", "combined", "prosit_combined"]
     if irt_model is not None:
         totest.append("prosit_best")
@@ -33,6 +35,7 @@ def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fd
             record[name].append((target_tab['q-value'] < fdr).sum())
 
     return pd.DataFrame(record)
+
 
 if __name__ == "__main__":
     run_model = model.PrositIRT()
@@ -58,10 +61,10 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 1
+    gpu_index = 7
     print("Running", frag_model)
-    # "HLA_2", "Mel1",
-    for which in ["HLA_1"]:
+    #
+    for which in ["HLA_2", "Mel1", "HLA_1"]:
         print("-------------------------------")
         print(which)
         save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/percolator/{frag_model}_finetune/no_finetuned_all"

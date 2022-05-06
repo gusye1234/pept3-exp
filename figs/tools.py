@@ -15,7 +15,8 @@ import bio_helper
 from bio_helper import peptide_parser
 from random import choices, sample
 
-MSMS_NAME=None
+MSMS_NAME = None
+
 
 def read_msms(file):
     global MSMS_NAME
@@ -30,6 +31,7 @@ def read_msms(file):
                 data.append(l)
     MSMS_NAME = head
     return head, data
+
 
 def has(hint, alist):
     for i in alist:
@@ -53,13 +55,16 @@ def filter_peptide(pe: str):
 def head(data, i, top=10):
     return [data[_][i] for _ in range(top)]
 
+
 def filter_msms(name, row_data):
     frag_index = name.index("Fragmentation")
     data = [i for i in row_data if i[frag_index] == "HCD"]
     data = [i for i in data if int(i[name.index("Charge")]) < 7]
     data = [i for i in data if 7 <= int(i[name.index("Length")]) <= 30]
-    data = [i for i in data if filter_peptide(i[name.index("Modified sequence")])]
-    data = [i for i in data if len(i[name.index("All modified sequences")].split(';')) > 1]
+    data = [i for i in data if filter_peptide(
+        i[name.index("Modified sequence")])]
+    data = [i for i in data if len(
+        i[name.index("All modified sequences")].split(';')) > 1]
     data = [i for i in data if filter_peptide(
         i[name.index("All modified sequences")].split(';')[1])]
     data = [i for i in data if 7 <= len(
@@ -85,7 +90,7 @@ def loc_msms_in_raw(data, raws_dir):
     for f in sorted(find_raw.keys()):
         scans = find_raw[f]
         index_now = 0
-        file2read = os.path.join(raws_dir, f+".csv")
+        file2read = os.path.join(raws_dir, f + ".csv")
         log_raw = []
         log_scan = []
         with open(file2read) as read:
@@ -117,7 +122,8 @@ def loc_msms_in_raw(data, raws_dir):
                 break
         total_spect += len(scans)
         if index_now < len(scans):
-            print(f"{f} -- Not match spect: No.{index_now}-{scans[index_now][1]} in {len(scans)}")
+            print(
+                f"{f} -- Not match spect: No.{index_now}-{scans[index_now][1]} in {len(scans)}")
         # print("Done", f)
     return matches
 
@@ -201,12 +207,14 @@ def test_model_frag(model):
         loss_test /= test_count
     print(f"----Test Loss: {loss_test:.5f}----")
 
+
 def filter_m_r(m_r):
     def inten_mass_match(row):
         return len(row[1][2].split(' ')) == len(row[1][3].split(' '))
     data = [m for m in m_r if inten_mass_match(m)]
     return data
-    
+
+
 def generate_matched_ions(matches):
     re = []
     for m in matches:
@@ -223,12 +231,14 @@ def generate_matched_ions(matches):
         re.append(pack)
     return re
 
+
 def all_intensities_len(matches):
     re = []
     for m in matches:
         raw = m[1]
         re.append([float(i) for i in raw[3].split(' ')])
     return re
+
 
 def generate_matched_ions_delta(matches):
     re = []
@@ -279,6 +289,7 @@ def generate_matched_ions_reverse(matches):
         re.append(pack)
     return re
 
+
 def remove_intensities(matches):
     all_intensities = []
     for m in matches:
@@ -316,6 +327,7 @@ def to_tensor(frag_msms):
     frag_msms = np.concatenate(frag_msms, axis=0)
     return torch.from_numpy(frag_msms)
 
+
 def get_irt_all(run_model, data_cand):
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -330,20 +342,21 @@ def get_irt_all(run_model, data_cand):
         data["sequence_integer"] = seqs.to(device)
         data['peptide_mask'] = ms.helper.create_mask(seqs).to(device)
         return data
-    
+
     run_model = run_model.to(device)
     run_model = run_model.eval()
     with torch.no_grad():
         data = perpare_data(*data_cand)
         rts = []
         for b in range(0, len(data['sequence_integer']), 2048):
-            d = {k: v[b:b+2048] for k, v in data.items()}
+            d = {k: v[b:b + 2048] for k, v in data.items()}
             pred = run_model(d)
             # check_empty = torch.any(d['peptide_mask'], dim=1)
             # sas[~check_empty] = 0.
             rts.append(pred)
         all_rt = torch.cat(rts, dim=0).cpu().numpy()
-    all_rt = all_rt*np.sqrt(constants.iRT_rescaling_var) + constants.iRT_rescaling_mean
+    all_rt = all_rt * np.sqrt(constants.iRT_rescaling_var) + \
+        constants.iRT_rescaling_mean
     return all_rt
 
 
@@ -371,9 +384,43 @@ def get_sa_all(run_model, data_nce_cand, frag_msms, gpu_index=0, **kwargs):
         sass = []
         pred_tensor = []
         for b in range(0, len(frag_msms), 512):
-            d = {k: v[b:b+512] for k, v in data.items()}
+            d = {k: v[b:b + 512] for k, v in data.items()}
             pred = run_model(d)
-            gt_frag = to_tensor(frag_msms[b:b+512]).to(device)
+            gt_frag = to_tensor(frag_msms[b:b + 512]).to(device)
+            # gt_frag = gt_frag/gt_frag.max()
+            sas, pred = helper.predict_sa(gt_frag, pred, d)
+            # check_empty = torch.any(d['peptide_mask'], dim=1)
+            # sas[~check_empty] = 0.
+            sass.append(sas.cpu())
+            pred_tensor.append(pred.cpu())
+        all_sa = torch.cat(sass, dim=0)
+        all_pred = torch.cat(pred_tensor, dim=0)
+    return all_sa, all_pred
+
+
+def get_sa_from_array(run_model, seqs, nces, charges, frag_msms, gpu_index=0, **kwargs):
+    if torch.cuda.is_available():
+        device = torch.device(f"cuda:{gpu_index}")
+    else:
+        device = torch.device("cpu")
+
+    data = {
+        "sequence_integer": torch.from_numpy(seqs).to(device),
+        "collision_energy_aligned_normed": torch.from_numpy(nces).to(device),
+        "precursor_charge_onehot": torch.from_numpy(charges).to(device)
+    }
+    data["peptide_mask"] = ms.helper.create_mask(
+        data['sequence_integer']).to(device)
+
+    run_model = run_model.to(device)
+    run_model = run_model.eval()
+    with torch.no_grad():
+        sass = []
+        pred_tensor = []
+        for b in range(0, len(frag_msms), 512):
+            d = {k: v[b:b + 512] for k, v in data.items()}
+            pred = run_model(d)
+            gt_frag = to_tensor(frag_msms[b:b + 512]).to(device)
             # gt_frag = gt_frag/gt_frag.max()
             sas, pred = helper.predict_sa(gt_frag, pred, d)
             # check_empty = torch.any(d['peptide_mask'], dim=1)
@@ -411,7 +458,7 @@ def get_single_score_all(run_model, data_nce_cand, frag_msms):
         data = perpare_data(*data_nce_cand)
         sass = []
         for b in range(0, len(frag_msms), 2048):
-            d = {k: v[b:b+2048] for k, v in data.items()}
+            d = {k: v[b:b + 2048] for k, v in data.items()}
             sas = run_model(d)
             # gt_frag = gt_frag/gt_frag.max()
             # check_empty = torch.any(d['peptide_mask'], dim=1)
@@ -419,6 +466,7 @@ def get_single_score_all(run_model, data_nce_cand, frag_msms):
             sass.append(sas)
         all_sa = torch.cat(sass, dim=0)
     return all_sa
+
 
 def get_sa_all_scale(run_model, data_nce_cand, frag_msms, inten_scales):
     if torch.cuda.is_available():
@@ -444,10 +492,10 @@ def get_sa_all_scale(run_model, data_nce_cand, frag_msms, inten_scales):
         sass = []
         pred_tensor = []
         for b in range(0, len(frag_msms), 2048):
-            d = {k: v[b:b+2048] for k, v in data.items()}
+            d = {k: v[b:b + 2048] for k, v in data.items()}
             pred = run_model(d)
-            gt_frag = to_tensor(frag_msms[b:b+2048]).to(device)
-            scales = to_tensor(inten_scales[b:b+2048]).to(device)
+            gt_frag = to_tensor(frag_msms[b:b + 2048]).to(device)
+            scales = to_tensor(inten_scales[b:b + 2048]).to(device)
             # gt_frag = gt_frag/gt_frag.max()
             sas, pred = helper.predict_sa_scale(gt_frag, pred, d, scales)
             # check_empty = torch.any(d['peptide_mask'], dim=1)
@@ -457,6 +505,7 @@ def get_sa_all_scale(run_model, data_nce_cand, frag_msms, inten_scales):
         all_sa = torch.cat(sass, dim=0)
         all_pred = torch.cat(pred_tensor, dim=0)
     return all_sa, all_pred
+
 
 def get_sa_random_all(run_model, frag_msms):
     if torch.cuda.is_available():
@@ -482,10 +531,10 @@ def get_sa_random_all(run_model, frag_msms):
         sass = []
         pred_tensor = []
         for b in range(0, len(frag_msms), 2048):
-            d = {k: v[b:b+2048] for k, v in data.items()}
+            d = {k: v[b:b + 2048] for k, v in data.items()}
             pred = run_model(d)
-            gt_frag = to_tensor(frag_msms[b:b+2048]).to(device)
-            gt_frag = gt_frag/gt_frag.max()
+            gt_frag = to_tensor(frag_msms[b:b + 2048]).to(device)
+            gt_frag = gt_frag / gt_frag.max()
             sas = helper.predict_sa(gt_frag, pred, d)
             check_empty = torch.any(d['peptide_mask'], dim=1)
             sas[~check_empty] = 0.
@@ -495,18 +544,19 @@ def get_sa_random_all(run_model, frag_msms):
         all_pred = torch.cat(pred_tensor, dim=0)
     return all_sa, all_pred
 
+
 def generate_from_msms(msms_data, name, nces=33):
     seqs = [i[name.index("Modified sequence")].strip("_") for i in msms_data]
     seqs = [bio_helper.peptide_to_inter(i) for i in seqs]
     seqs = np.concatenate(seqs)
 
     charges = [int(i[name.index("Charge")]) for i in msms_data]
-    charges = [bio_helper.one_hot(i-1) for i in charges]
+    charges = [bio_helper.one_hot(i - 1) for i in charges]
     charges = np.concatenate(charges)
 
     data_nce_cand = [
         seqs,
-        np.ones((len(seqs), ), dtype=int)*nces/100.0,
+        np.ones((len(seqs), ), dtype=int) * nces / 100.0,
         charges
     ]
     return data_nce_cand
@@ -518,7 +568,7 @@ def generate_from_msms_rt(msms_data, name, nces=33):
     seqs = np.concatenate(seqs)
 
     charges = [int(i[name.index("Charge")]) for i in msms_data]
-    charges = [bio_helper.one_hot(i-1) for i in charges]
+    charges = [bio_helper.one_hot(i - 1) for i in charges]
     charges = np.concatenate(charges)
 
     rt = [float(m[name.index("Retention time")]) for m in msms_data]
@@ -526,7 +576,7 @@ def generate_from_msms_rt(msms_data, name, nces=33):
 
     data_nce_cand = [
         seqs,
-        np.ones((len(seqs), ), dtype=int)*nces/100.0,
+        np.ones((len(seqs), ), dtype=int) * nces / 100.0,
         charges,
         rt.reshape(-1, 1)
     ]
@@ -540,12 +590,12 @@ def generate_from_msms_delta(msms_data, name, nces=33):
     seqs = np.concatenate(seqs)
 
     charges = [int(i[name.index("Charge")]) for i in msms_data]
-    charges = [bio_helper.one_hot(i-1) for i in charges]
+    charges = [bio_helper.one_hot(i - 1) for i in charges]
     charges = np.concatenate(charges)
 
     data_nce_cand = [
         seqs,
-        np.ones((len(seqs), ), dtype=int)*nces/100.0,
+        np.ones((len(seqs), ), dtype=int) * nces / 100.0,
         charges
     ]
     return data_nce_cand
@@ -558,12 +608,12 @@ def generate_from_msms_reverse(msms_data, name, nces=33):
     seqs = np.concatenate(seqs)
 
     charges = [int(i[name.index("Charge")]) for i in msms_data]
-    charges = [bio_helper.one_hot(i-1) for i in charges]
+    charges = [bio_helper.one_hot(i - 1) for i in charges]
     charges = np.concatenate(charges)
 
     data_nce_cand = [
         seqs,
-        np.ones((len(seqs), ), dtype=int)*nces/100.0,
+        np.ones((len(seqs), ), dtype=int) * nces / 100.0,
         charges
     ]
     return data_nce_cand
@@ -575,15 +625,16 @@ def generate_from_mi(m_i, name, nces=33):
     seqs = np.concatenate(seqs)
 
     charges = [i['charge'] for i in m_i]
-    charges = [bio_helper.one_hot(i-1) for i in charges]
+    charges = [bio_helper.one_hot(i - 1) for i in charges]
     charges = np.concatenate(charges)
 
     data_nce_cand = [
         seqs,
-        np.ones((len(seqs), ), dtype=int)*nces/100.0,
+        np.ones((len(seqs), ), dtype=int) * nces / 100.0,
         charges
     ]
     return data_nce_cand
+
 
 def generate_from_msms_random(msms_data, name, nces=33, mutal=.9):
     seqs = [i[name.index("Modified sequence")].strip("_") for i in msms_data]
@@ -593,15 +644,16 @@ def generate_from_msms_random(msms_data, name, nces=33, mutal=.9):
     seqs = np.concatenate(seqs)
 
     charges = [int(i[name.index("Charge")]) for i in msms_data]
-    charges = [bio_helper.one_hot(i-1) for i in charges]
+    charges = [bio_helper.one_hot(i - 1) for i in charges]
     charges = np.concatenate(charges)
 
     data_nce_cand = [
         seqs,
-        np.ones((len(seqs), ), dtype=int)*nces/100.0,
+        np.ones((len(seqs), ), dtype=int) * nces / 100.0,
         charges
     ]
     return data_nce_cand
+
 
 def random_pick_petides(seq, mutal=.9):
     new_seq = []
@@ -613,6 +665,7 @@ def random_pick_petides(seq, mutal=.9):
             new_seq.append(s)
     return new_seq
 
+
 def read_name(msms_file):
     with open(msms_file) as f:
         for line in f:
@@ -620,15 +673,16 @@ def read_name(msms_file):
             break
     return name
 
+
 def save_m_r_ions(msms_file, raw_dir, sample_size=None):
     name, msms_data = read_msms(
         msms_file)
     msms_data = filter_msms(name, msms_data)
-    
-    save2 = os.path.splitext(msms_file)[0]+"_ions.txt"
+
+    save2 = os.path.splitext(msms_file)[0] + "_ions.txt"
     if sample_size is not None:
         msms_data = sample(msms_data, sample_size)
-        save2 = os.path.splitext(msms_file)[0]+f"_{sample_size}_ions.txt"
+        save2 = os.path.splitext(msms_file)[0] + f"_{sample_size}_ions.txt"
     msms_data.sort(key=lambda x: int(x[name.index("id")]))
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
@@ -655,10 +709,11 @@ def save_m_r_ions_reverse(msms_file, raw_dir, sample_size=None):
         msms_file)
     msms_data = filter_msms(name, msms_data)
     print(len(msms_data))
-    save2 = os.path.splitext(msms_file)[0]+"_ions_reverse.txt"
+    save2 = os.path.splitext(msms_file)[0] + "_ions_reverse.txt"
     if sample_size is not None:
         msms_data = choices(msms_data, k=sample_size)
-        save2 = os.path.splitext(msms_file)[0]+f"_{sample_size}_ions_reverse.txt"
+        save2 = os.path.splitext(msms_file)[
+            0] + f"_{sample_size}_ions_reverse.txt"
     msms_data.sort(key=lambda x: int(x[name.index("id")]))
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
@@ -682,6 +737,7 @@ def save_m_r_ions_reverse(msms_file, raw_dir, sample_size=None):
             f.write(
                 "\t".join([mr_line, delta_line, ion_line, reverse_line]) + "\n")
     return name
+
 
 def read_m_r_ions(save2):
     m_r = []
@@ -710,6 +766,7 @@ def read_m_r_ions_reverse(save2):
             m_i_rever.append(eval(m4))
     return m_r, m_i_delta, m_i, m_i_rever
 
+
 def generate_peaks_info(m_ions_pre, cores=4):
     from multiprocessing import Pool
     with Pool(cores) as p:
@@ -717,6 +774,7 @@ def generate_peaks_info(m_ions_pre, cores=4):
     m_i = sorted(m_i, key=lambda x: x[0])
     m_i = [m[1:] for m in m_i]
     return m_i
+
 
 if __name__ == "__main__":
     from time import time

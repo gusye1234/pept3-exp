@@ -8,27 +8,28 @@ import torch.nn.functional as F
 DIM = 128
 DROPOUT = 0.1
 
+
 class Compose_single(nn.Module):
     def __init__(self, spect_model, irt_model, spect_dim=174) -> None:
         super().__init__()
         self.spect_model = spect_model
-        self.irt_model = irt_model 
+        self.irt_model = irt_model
         self.classify = nn.Sequential(
-            nn.Linear(spect_dim*2+2, 256),
+            nn.Linear(spect_dim * 2 + 2, 256),
             nn.ReLU(),
             nn.Linear(256, 1),
         )
+
     def forward(self, data):
         spect = self.spect_model(data)
         irt = self.irt_model(data)
 
         spect_mask = (data['intensities_raw'] >= 0).float()
         spect_ov = data['intensities_raw'] * spect_mask
-        spect_pr = spect*spect_mask
+        spect_pr = spect * spect_mask
         spect_feat = torch.cat(
             (spect_pr, spect_ov.float(), irt, data['irt'].float()), dim=1)
         return self.classify(spect_feat).squeeze()
-    
 
 
 class pDeep2_nomod(nn.Module):
@@ -37,7 +38,7 @@ class pDeep2_nomod(nn.Module):
         self.layer_size = 256
         self.peptide_dim = kwargs.pop('peptide_dim', 22)
         self.instrument_size = 8
-        self.input_size = self.peptide_dim*4+2+1+3
+        self.input_size = self.peptide_dim * 4 + 2 + 1 + 3
         self.ions_dim = kwargs.pop('ions_dim', 6)
         self.instrument_ce_scope = "instrument_nce"
         self.rnn_dropout = 0.2
@@ -48,13 +49,13 @@ class pDeep2_nomod(nn.Module):
         self.lstm_layer1 = nn.LSTM(
             self.input_size, self.layer_size, batch_first=True, bidirectional=True)
         self.lstm_layer2 = nn.LSTM(
-            self.layer_size*2+1+3, self.layer_size, batch_first=True, bidirectional=True)
+            self.layer_size * 2 + 1 + 3, self.layer_size, batch_first=True, bidirectional=True)
 
         self.lstm_output_layer = nn.LSTM(
-            self.layer_size*2+1+3, self.ions_dim, bidirectional=True, batch_first=True
+            self.layer_size * 2 + 1 + 3, self.ions_dim, bidirectional=True, batch_first=True
         )
         self.linear_inst_proj = nn.Linear(
-            self.instrument_size+1, 3, bias=False)
+            self.instrument_size + 1, 3, bias=False)
         self.dropout = nn.Dropout(p=self.output_dropout)
 
     def comment(self):
@@ -68,21 +69,21 @@ class pDeep2_nomod(nn.Module):
         pep_dim = peptides.shape[2]
         assert pep_dim == self.peptide_dim
         long_feature = peptides.new_zeros(
-            (peptides.shape[0], peptides.shape[1]-1, pep_dim*4 + 2))
+            (peptides.shape[0], peptides.shape[1] - 1, pep_dim * 4 + 2))
         long_feature[:, :, :pep_dim] = peptides[:, :-1, :]
-        long_feature[:, :, pep_dim:2*pep_dim] = peptides[:, 1:, :]
-        for i in range(peptides.shape[1]-1):
-            long_feature[:, i, 2*pep_dim:3*pep_dim] = torch.sum(
+        long_feature[:, :, pep_dim:2 * pep_dim] = peptides[:, 1:, :]
+        for i in range(peptides.shape[1] - 1):
+            long_feature[:, i, 2 * pep_dim:3 * pep_dim] = torch.sum(
                 peptides[:, :i, :], dim=1) if i != 0 else peptides.new_zeros((peptides.shape[0], pep_dim))
-            long_feature[:, i, 3*pep_dim:4*pep_dim] = torch.sum(peptides[:, (i+2):, :], dim=1) if i == (
-                peptides.shape[1]-2) else peptides.new_zeros((peptides.shape[0], pep_dim))
-            long_feature[:, i, 4*pep_dim] = 1 if (i == 0) else 0
-            long_feature[:, i, 4*pep_dim + 1] = ((peptides_length-2) == i)
+            long_feature[:, i, 3 * pep_dim:4 * pep_dim] = torch.sum(peptides[:, (i + 2):, :], dim=1) if i == (
+                peptides.shape[1] - 2) else peptides.new_zeros((peptides.shape[0], pep_dim))
+            long_feature[:, i, 4 * pep_dim] = 1 if (i == 0) else 0
+            long_feature[:, i, 4 * pep_dim + 1] = ((peptides_length - 2) == i)
         return long_feature
 
     def add_leng_dim(self, x, length):
         x = x.unsqueeze(dim=1)
-        shape_repeat = [1]*len(x.shape)
+        shape_repeat = [1] * len(x.shape)
         shape_repeat[1] = length
         return x.repeat(*shape_repeat)
 
@@ -115,10 +116,8 @@ class pDeep2_nomod(nn.Module):
         x = torch.cat([x, charge, proj_inst], dim=2)
         output, _ = self.lstm_output_layer(x)
         output = (output[:, :, :self.ions_dim] + output[:, :, self.ions_dim:])
-        
+
         return output.reshape(B, -1)
-
-
 
 
 class TransPro(nn.Module):
@@ -143,9 +142,9 @@ class TransPro(nn.Module):
 
     def init(self):
         self.p_embed_token = TokenEmbedding(
-            self.peptide_dim+1, self.peptide_embed_dim)
+            self.peptide_dim + 1, self.peptide_embed_dim)
         self.p_embed_pos = PositionalEncoding_fix(
-            self.pos_dim+1, self.peptide_embed_dim)
+            self.pos_dim + 1, self.peptide_embed_dim)
         # assert peptide id starts from 1, cls for zeros
         self.c_embed = nn.Linear(self.percursor_dim, self.peptide_embed_dim)
         self.n_embed = nn.Linear(1, self.peptide_embed_dim)
@@ -159,7 +158,7 @@ class TransPro(nn.Module):
             encoder_layer, num_layers=self.frag_layer_num)
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=self.peptide_embed_dim*2, nhead=8, dropout=DROPOUT, dim_feedforward=self.inner_dim*2)
+            d_model=self.peptide_embed_dim * 2, nhead=8, dropout=DROPOUT, dim_feedforward=self.inner_dim * 2)
         self.in_frag_trans = nn.TransformerEncoder(
             encoder_layer, num_layers=self.in_frag_layer_num)
 
@@ -234,6 +233,8 @@ class TransPro(nn.Module):
             frag_ions = self.frag_final_decoder(frag_embed)
             frag_ions = frag_ions.reshape(B, -1)
             return frag_ions
+
+
 class TransProDeep(TransPro):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -256,12 +257,12 @@ class PrositIRT(nn.Module):
                          hidden_size=self.hidden_size,
                          bidirectional=True)
         self.drop = nn.Dropout(p=0.5)
-        self.gru = nn.GRU(input_size=self.hidden_size*2,
-                          hidden_size=self.hidden_size*2)
-        self.agg = AttentalSum(self.hidden_size*2)
+        self.gru = nn.GRU(input_size=self.hidden_size * 2,
+                          hidden_size=self.hidden_size * 2)
+        self.agg = AttentalSum(self.hidden_size * 2)
         self.leaky = nn.LeakyReLU()
         self.drop2 = nn.Dropout(p=0.1)
-        self.decoder = nn.Linear(self.hidden_size*2, 1)
+        self.decoder = nn.Linear(self.hidden_size * 2, 1)
 
     def comment(self):
         return "PrositIRT"
@@ -295,22 +296,27 @@ class PrositFrag(nn.Module):
                          hidden_size=self.hidden_size,
                          bidirectional=True)
         self.drop3 = nn.Dropout(p=0.3)
-        self.gru = nn.GRU(input_size=self.hidden_size*2,
-                          hidden_size=self.hidden_size*2)
-        self.agg = AttentalSum(self.hidden_size*2)
+        self.gru = nn.GRU(input_size=self.hidden_size * 2,
+                          hidden_size=self.hidden_size * 2)
+        self.agg = AttentalSum(self.hidden_size * 2)
         self.leaky = nn.LeakyReLU()
 
-        self.side_encoder = nn.Linear(self.percursor_dim+1, self.hidden_size*2)
+        self.side_encoder = nn.Linear(
+            self.percursor_dim + 1, self.hidden_size * 2)
 
-        self.gru_decoder = nn.GRU(input_size=self.hidden_size*2,
-                                  hidden_size=self.hidden_size*2)
-        self.in_frag = nn.Linear(self.max_sequence-1, self.max_sequence-1)
-        self.final_decoder = nn.Linear(self.hidden_size*2, 6)
+        self.gru_decoder = nn.GRU(input_size=self.hidden_size * 2,
+                                  hidden_size=self.hidden_size * 2)
+        self.in_frag = nn.Linear(self.max_sequence - 1, self.max_sequence - 1)
+        self.final_decoder = nn.Linear(self.hidden_size * 2, 6)
 
     def comment(self):
         return "PrositFrag"
 
     def forward(self, x, **kwargs):
+        self.bi.flatten_parameters()
+        self.gru.flatten_parameters()
+        self.gru_decoder.flatten_parameters()
+
         peptides = x['sequence_integer']
         nce = x['collision_energy_aligned_normed'].float().reshape(-1, 1)
         charge = x['precursor_charge_onehot'].float()
@@ -327,13 +333,13 @@ class PrositFrag(nn.Module):
         side_info = self.side_encoder(side_input)
         side_info = self.drop3(side_info)
 
-        x = x*side_info
-        x = x.expand(self.max_sequence-1, x.shape[0], x.shape[1])
+        x = x * side_info
+        x = x.expand(self.max_sequence - 1, x.shape[0], x.shape[1])
         x, _ = self.gru_decoder(x)
         x = self.drop3(x)
         x_d = self.in_frag(x.transpose(0, 2))
 
-        x = x*x_d.transpose(0, 2)
+        x = x * x_d.transpose(0, 2)
         x = self.final_decoder(x)
         x = self.leaky(x)
         x = x.transpose(0, 1).reshape(B, -1)
@@ -362,9 +368,9 @@ class TransProBest(nn.Module):
 
     def init(self):
         self.p_embed_token = TokenEmbedding(
-            self.peptide_dim+1, self.peptide_embed_dim)
+            self.peptide_dim + 1, self.peptide_embed_dim)
         self.p_embed_pos = PositionalEncoding_fix(
-            self.pos_dim+1, self.peptide_embed_dim)
+            self.pos_dim + 1, self.peptide_embed_dim)
         # assert peptide id starts from 1, cls for zeros
         self.c_embed = nn.Linear(self.percursor_dim, self.peptide_embed_dim)
         self.n_embed = nn.Linear(1, self.peptide_embed_dim)
@@ -378,9 +384,9 @@ class TransProBest(nn.Module):
             encoder_layer, num_layers=self.frag_layer_num)
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=self.peptide_embed_dim*2, nhead=8, dropout=DROPOUT, dim_feedforward=self.inner_dim)
+            d_model=self.peptide_embed_dim * 2, nhead=8, dropout=DROPOUT, dim_feedforward=self.inner_dim)
 
-        self.in_frag = nn.Linear(self.pos_dim-1, self.pos_dim-1)
+        self.in_frag = nn.Linear(self.pos_dim - 1, self.pos_dim - 1)
 
         # self.in_frag_trans = nn.TransformerEncoder(
         #     encoder_layer, num_layers=self.in_frag_layer_num)
@@ -473,9 +479,9 @@ class TransProIRT(nn.Module):
 
     def init(self):
         self.p_embed_token = TokenEmbedding(
-            self.peptide_dim+1, self.peptide_embed_dim)
+            self.peptide_dim + 1, self.peptide_embed_dim)
         self.p_embed_pos = PositionalEncoding_fix(
-            self.pos_dim+1, self.peptide_embed_dim)
+            self.pos_dim + 1, self.peptide_embed_dim)
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=self.peptide_embed_dim, nhead=8, dropout=DROPOUT, dim_feedforward=self.inner_dim)

@@ -107,7 +107,7 @@ def semisupervised_finetune(model, input_table, batch_size=2048, gpu_index=0, ma
             # train_loader = DataLoader(train_data.semisupervised_sa_finetune_noneg(
             # ), batch_size=batch_size, shuffle=True)
         for i, data in enumerate(train_loader):
-            train_count = i+1
+            train_count = i + 1
             data = {k: v.to(device) for k, v in data.items()}
             data["peptide_mask"] = helper.create_mask(
                 data['sequence_integer'])
@@ -218,7 +218,7 @@ def semisupervised_finetune_random_match(model, input_table, batch_size=2048, gp
             # train_loader = DataLoader(train_data.semisupervised_sa_finetune_noneg(
             # ), batch_size=batch_size, shuffle=True)
         for i, data in enumerate(train_loader):
-            train_count = i+1
+            train_count = i + 1
             data = {k: v.to(device) for k, v in data.items()}
             data["peptide_mask"] = helper.create_mask(
                 data['sequence_integer'])
@@ -238,7 +238,7 @@ def semisupervised_finetune_random_match(model, input_table, batch_size=2048, gp
     return best_model, train_data.id2remove()
 
 
-def semisupervised_finetune_twofold(ori_model, input_table, batch_size=2048, gpu_index=0, max_epochs=10,
+def semisupervised_finetune_twofold(ori_model, input_table, batch_size=1024, gpu_index=0, max_epochs=10,
                                     update_interval=1, q_threshold=0.1, validate_q_threshold=0.01, pearson=False,
                                     enable_test=False, only_id2remove=False):
     helper.set_seed(2022)
@@ -246,7 +246,8 @@ def semisupervised_finetune_twofold(ori_model, input_table, batch_size=2048, gpu
         device = torch.device(f"cuda:{gpu_index}")
     else:
         device = torch.device("cpu")
-    print("Run on", device)
+    print(
+        f"Run on {device}, with training-q {q_threshold}, valid-q {validate_q_threshold}")
 
     def finetune(dataset):
         model = deepcopy(ori_model)
@@ -289,15 +290,17 @@ def semisupervised_finetune_twofold(ori_model, input_table, batch_size=2048, gpu
                     if q_values_num > best_q_value_num:
                         best_model = deepcopy(model)
                         best_q_value_num = q_values_num
-                        print(f"{np.sum(q_values < 0.01)}*", end=' ')
+                        print(
+                            f"{(np.sum(q_values < 0.001), np.sum(q_values < 0.01))}*", end=' ')
                     else:
-                        print(np.sum(q_values < 0.01), end=' ')
+                        print((np.sum(q_values < 0.001),
+                              np.sum(q_values < 0.01)), end=' ')
                     train_loader = DataLoader(dataset.semisupervised_sa_finetune(
                         threshold=q_threshold), batch_size=batch_size, shuffle=True)
                 # train_loader = DataLoader(dataset.semisupervised_sa_finetune_noneg(
                 # ), batch_size=batch_size, shuffle=True)
             for i, data in enumerate(train_loader):
-                train_count = i+1
+                train_count = i + 1
                 data = {k: v.to(device) for k, v in data.items()}
                 data["peptide_mask"] = helper.create_mask(
                     data['sequence_integer'])

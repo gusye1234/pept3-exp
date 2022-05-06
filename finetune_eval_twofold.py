@@ -25,17 +25,17 @@ def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["sa", "sa"]):
     id2 = set(table2[table2['q-value'] < testfdr]['PSMId'])
     overlap = id1.intersection(id2)
     union = id1.union(id2)
-    print(f"{compare}-{testfdr}:", (len(id1) - len(overlap))/len(union),
-          len(overlap)/len(union), (len(id2)-len(overlap))/len(union))
-    return len(id1) - len(overlap), len(overlap), len(id2)-len(overlap)
+    print(f"{compare}-{testfdr}:", (len(id1) - len(overlap)) / len(union),
+          len(overlap) / len(union), (len(id2) - len(overlap)) / len(union))
+    return len(id1) - len(overlap), len(overlap), len(id2) - len(overlap)
 
 
-def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None, id2remove=None, pearson=False, gpu_index=0):
+def eval_fdr(run_model1, run_model2, msms_file, raw_dir, save_tab, fdr_threshold=0.01, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None, id2remove=None, pearson=False, gpu_index=0):
     run_model1 = run_model1.eval()
     run_model2 = run_model2.eval()
 
     record = {}
-    record['fdrs'] = [100*i for i in show_fdr]
+    record['fdrs'] = [100 * i for i in show_fdr]
     totest = ["andromeda", "sa", "prosit_combined"]
     if irt_model is not None:
         totest.append("prosit_best")
@@ -70,7 +70,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
         os.mkdir(combined_dir)
     totest = ['prosit_combined', "prosit_best"]
     record = {}
-    record['fdrs'] = [100*i for i in show_fdr]
+    record['fdrs'] = [100 * i for i in show_fdr]
     print("Re-evaluate no finetuned")
     for name in totest:
         os.system(f"percolator -v 0 --weights {combined_dir}/{name}_weights_nofinetuned.csv \
@@ -80,7 +80,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
                 {no_finetuned_dir}/{name}.tab")
         target_tab = pd.read_csv(os.path.join(
             combined_dir, f"{name}_target_nofinetuned.psms"), sep='\t')
-        record[name+"_no_finetuned"] = []
+        record[name + "_no_finetuned"] = []
         for fdr in show_fdr:
             record[name +
                    "_no_finetuned"].append((target_tab['q-value'] < fdr).sum())
@@ -93,7 +93,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
                 {finetuned_dir}/{name}.tab")
         target_tab = pd.read_csv(os.path.join(
             combined_dir, f"{name}_target_finetuned.psms"), sep='\t')
-        record[name+"_finetuned"] = []
+        record[name + "_finetuned"] = []
         for fdr in show_fdr:
             record[name +
                    "_finetuned"].append((target_tab['q-value'] < fdr).sum())
@@ -112,7 +112,7 @@ def combined_eval_fdr(no_finetuned_dir, finetuned_dir, fdr_threshold=0.1, show_f
                 {combined_dir}/combined_{name}.tab")
         target_tab = pd.read_csv(os.path.join(
             combined_dir, f"{name}_target_combined.psms"), sep='\t')
-        record[name+"_combined"] = []
+        record[name + "_combined"] = []
         for fdr in show_fdr:
             record[name +
                    "_combined"].append((target_tab['q-value'] < fdr).sum())
@@ -126,7 +126,7 @@ if __name__ == "__main__":
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "prosit_cid"
+    frag_model = "prosit_l1"
     if frag_model == "prosit_cid":
         run_model = model.PrositFrag()
         run_model.load_state_dict(torch.load(
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 3
+    gpu_index = 2
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
     analysis_dict = {}
