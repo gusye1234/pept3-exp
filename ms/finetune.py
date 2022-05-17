@@ -247,7 +247,7 @@ def semisupervised_finetune_twofold(ori_model, input_table, batch_size=1024, gpu
     else:
         device = torch.device("cpu")
     print(
-        f"Run on {device}, with training-q {q_threshold}, valid-q {validate_q_threshold}")
+        f"Run on {device}, with training-q {q_threshold}, valid-q {validate_q_threshold}, epoch {max_epochs}")
 
     def finetune(dataset):
         model = deepcopy(ori_model)

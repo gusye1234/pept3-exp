@@ -223,7 +223,7 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
             prosit = pd.read_csv(
                 origin_prosit_tab, sep='\t')
             prosit["SpecId"] = prosit["SpecId"].apply(
-                lambda x: "-".join(x.split('-')[:4]))
+                lambda x: "-".join(x.split('-')[:-1]))
             assert prosit['SpecId'].is_unique
             prosit = prosit.set_index("SpecId")
 
@@ -293,25 +293,26 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 6
+    gpu_index = 3
     set_threshold = 0.01
+    max_epochs = 20
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
     for which in ['HLA_1']:
         print("-------------------------------")
         print("boosting figure3", which)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/percolator_hdf5/"
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/percolator_hdf5_{set_threshold}/"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
         feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/percolator/features.csv"
         origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/percolator/prosit.tab"
         tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/data.hdf5"
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-            run_model, tabels_file, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
-        # torch.save(finetune_model1.state_dict(),
-        #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_first_{which}.pth")
-        # torch.save(finetune_model2.state_dict(),
-        #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth")
+            run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
+        torch.save(finetune_model1.state_dict(),
+                   f"./checkpoints/frag_boosting/fig5/{frag_model}_model_first_{which}.pth")
+        torch.save(finetune_model2.state_dict(),
+                   f"./checkpoints/frag_boosting/fig5/{frag_model}_model_second_{which}.pth")
 
         # finetune_model1 = deepcopy(run_model)
         # finetune_model1.load_state_dict(torch.load(
@@ -321,28 +322,3 @@ if __name__ == "__main__":
         #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth", map_location='cpu'))
         print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
                        irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())
-
-    # for which in ['noIAA', "IAA"]:
-    #     print("-------------------------------")
-    #     print("boosting figure3", which)
-    #     save_tab = f"/data1/yejb/prosit/figure3/percolator/{frag_model}_finetune_{which}_{set_threshold}"
-    #     if not os.path.exists(save_tab):
-    #         os.mkdir(save_tab)
-    #     feature_csv = f"/data1/yejb/prosit/figure3/forPRIDE/{which}/percolator/features.csv"
-    #     origin_prosit_tab = f"/data1/yejb/prosit/figure3/forPRIDE/{which}/percolator/prosit.tab"
-    #     tabels_file = f"/data1/yejb/prosit/figure3/forPRIDE/{which}/data.hdf5"
-    #     finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-    #         run_model, tabels_file, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
-    #     # torch.save(finetune_model1.state_dict(),
-    #     #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_first_{which}.pth")
-    #     # torch.save(finetune_model2.state_dict(),
-    #     #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth")
-
-    #     # finetune_model1 = deepcopy(run_model)
-    #     # finetune_model1.load_state_dict(torch.load(
-    #     #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_first_{which}.pth", map_location='cpu'))
-    #     # finetune_model2 = deepcopy(run_model)
-    #     # finetune_model2.load_state_dict(torch.load(
-    #     #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth", map_location='cpu'))
-    #     print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
-    #                    irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())

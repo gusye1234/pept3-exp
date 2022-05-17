@@ -4,6 +4,7 @@
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
+*.xlsx
 checkpoints/
 __pycache__/
 *.py[cod]
