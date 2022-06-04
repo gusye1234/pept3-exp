@@ -113,7 +113,7 @@ class TableDataset(Dataset):
 
 
 class SemiDataset:
-    def __init__(self, table_input, score_init="andromeda", pi=0.9):
+    def __init__(self, table_input, score_init="andromeda", pi=0.9, rawfile_fiels=None):
         self._file_input = table_input
         self._pi = pi
         if not table_input.endswith("hdf5"):
@@ -121,10 +121,12 @@ class SemiDataset:
             self._data = pd.read_csv(table_input, sep='\t').sample(
                 frac=1, random_state=2022).reset_index(drop=True)
             self._frag_msms = self.backbone_spectrums()
-
         else:
             self._hdf5 = True
-            _feat = h5py.File(table_input, 'r')
+            if rawfile_fiels is None:
+                _feat = h5py.File(table_input, 'r')
+            else:
+                pass
             # Peptide, Charge, collision_energy_aligned_normed, Label,
             _label = np.array(_feat['reverse']).astype("int")
             _label[_label == 1] = -1

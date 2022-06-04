@@ -97,9 +97,10 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
 
         feature_table = pd.read_csv(feature_csv, nrows=sample_size)
         assert (len(scan_number) == len(feature_table))
-        assert all(
-            [True if p[0].decode() == p[1] else False for p in zip(rawfiles, np.array(feature_table['raw_file']))])
-        assert (scan_number == np.array(feature_table['scan_number'])).all()
+        assert all([True if p[0].decode() == p[1] else False for p in zip(
+            rawfiles, np.array(feature_table['raw_file']))])
+        assert (scan_number == np.array(
+            feature_table['scan_number'])).all()
         Rawfile = feature_table['raw_file'].to_list()
         Charges = np.array(feature_table['precursor_charge'])
         Features = {}
@@ -294,27 +295,29 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 5
-    set_threshold = 1
+    gpu_index = 3
+    set_threshold = 0.1
     max_epochs = 20
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
-    hla_mel = pd.read_csv("./figs/HLA_Mel.csv")
-    hla_mel = hla_mel[hla_mel['Experiment'].apply(
-        lambda x: x.endswith("HLA-I"))]
-    Mels = hla_mel['Experiment'].unique()
-    for which in Mels:
+    alleles_rawfile = {}
+    with open("figs/allele_raw.txt") as f:
+        for l in f:
+            pack = l.strip().split("\t")
+            alleles_rawfile[pack[0]] = set(pack[1:])
+    Alleles = sorted(alleles_rawfile.keys())
+    for which in Alleles:
         print("-------------------------------")
         print("boosting figure3", which)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/"
+        save_tab = f"/data1/yejb/prosit/figure3/percolator_hdf5_allele_{set_threshold}/"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/{which}"
+        save_tab = f"/data1/yejb/prosit/figure3/percolator_hdf5_allele_{set_threshold}/{which}"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"
-        origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
-        tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/data.hdf5"
+        feature_csv = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/features.csv"
+        origin_prosit_tab = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/prosit.tab"
+        tabels_file = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/data.hdf5"
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
             run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
         print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,

@@ -10,12 +10,12 @@ no_tab_dir = f"/data1/yejb/prosit/figure3/supply_origin"
 tab_dir_IAA_noIAA = "/data1/yejb/prosit/figure3/percolator/IAA_noIAA/"
 prosit_tab_dir_IAA_noIAA = "/data1/yejb/prosit/figure3/forPRIDE/IAA_noIAA"
 
-prosit_tab_IAA_noIAA = pd.read_csv(os.path.join(
-    tab_dir_IAA_noIAA, 'prosit_target.peptides'), sep='\t')
-nof_tab_IAA_noIAA = pd.read_csv(os.path.join(
-    prosit_tab_dir_IAA_noIAA, 'prosit_target.peptides'), sep='\t')
-print((prosit_tab_IAA_noIAA['q-value'] < 0.01).sum(),
-      (nof_tab_IAA_noIAA['q-value'] < 0.01).sum())
+# prosit_tab_IAA_noIAA = pd.read_csv(os.path.join(
+#     tab_dir_IAA_noIAA, 'prosit_target.peptides'), sep='\t')
+# nof_tab_IAA_noIAA = pd.read_csv(os.path.join(
+#     prosit_tab_dir_IAA_noIAA, 'prosit_target.peptides'), sep='\t')
+# print((prosit_tab_IAA_noIAA['q-value'] < 0.01).sum(),
+#       (nof_tab_IAA_noIAA['q-value'] < 0.01).sum())
 
 no_prosit_tab = pd.read_csv(os.path.join(
     no_tab_dir, 'supp3.csv'))
@@ -35,14 +35,14 @@ with open("allele_raw.txt") as f:
         pack = l.strip().split("\t")
         alleles_rawfile[pack[0]] = set(pack[1:])
 
-# identified_log_dict = {"Allele": [], "#Prosit(Supplementary Data 3)": [
-# ], "#Prosit(filtered from *.peptides)": []}
-# alleles_rawfile_log = {"Allele": [], "Rawfile": []}
 total_table = None
-f_index_tab = prosit_tab_IAA_noIAA.set_index("PSMId")
-nf_index_tab = nof_tab_IAA_noIAA.set_index("PSMId")
+# f_index_tab = prosit_tab_IAA_noIAA.set_index("PSMId")
+# nf_index_tab = nof_tab_IAA_noIAA.set_index("PSMId")
 allele_len_tab = 0
 nf_allele_len_tab = 0
+
+prosit_DIR = "/data1/yejb/prosit/figure3/forPRIDE/Alleles"
+ft_DIR = "/data1/yejb/prosit/figure3/percolator_hdf5_allele_0.1"
 for contain_name in all_alleles_names:
     if contain_name[0] not in "ABCG":
         continue
@@ -56,30 +56,16 @@ for contain_name in all_alleles_names:
 
     threshold = 0.01
 
-    target_tab = None
-    for raw in alleles_rawfile[contain_name]:
-        target_tab_mono = f_index_tab.filter(like=raw, axis=0)
-        target_tab_mono.reset_index(inplace=True)
-        if target_tab is None:
-            target_tab = target_tab_mono
-        else:
-            target_tab = pd.concat(
-                [target_tab, target_tab_mono], ignore_index=True)
+    target_tab = pd.read_csv(os.path.join(
+        ft_DIR, f"{contain_name}/prosit_target.peptides"), sep='\t')
     allele_len_tab += len(target_tab)
     f_p_petides = target_tab[target_tab['q-value'] < threshold]['peptide'].apply(
         lambda x: x.strip("_").strip(".")).unique()
     # all_rawfiles = list(target_tab['PSMId'].apply(
     #     lambda x: x.split('-')[0]).unique())
 
-    target_tab = None
-    for raw in alleles_rawfile[contain_name]:
-        target_tab_mono = nf_index_tab.filter(like=raw, axis=0)
-        target_tab_mono.reset_index(inplace=True)
-        if target_tab is None:
-            target_tab = target_tab_mono
-        else:
-            target_tab = pd.concat(
-                [target_tab, target_tab_mono], ignore_index=True)
+    target_tab = pd.read_csv(os.path.join(
+        prosit_DIR, f"{contain_name}/percolator/prosit_target.peptides"), sep='\t')
     nf_allele_len_tab += len(target_tab)
     nof_p_peptides = target_tab[target_tab['q-value'] < threshold]['peptide'].apply(
         lambda x: x.strip("_").strip(".")).unique()
@@ -98,15 +84,6 @@ for contain_name in all_alleles_names:
 
     print(
         f"  Maxquant {len(maxquant_peptides)}, SM {len(sm_v2_peptides)}, prosit(origin) {len(csv_nof_p_peptides)}, prosit {len(nof_p_peptides)}, finetuned {len(f_p_petides)}")
-    # identified_log_dict['Allele'].append(contain_name)
-    # identified_log_dict['#Prosit(Supplementary Data 3)'].append(
-    #     len(csv_nof_p_peptides))
-    # identified_log_dict['#Prosit(filtered from *.peptides)'].append(
-    #     len(nof_p_peptides))
-    # alleles_rawfile_log['Allele'].extend([contain_name] * len(all_rawfiles))
-    # alleles_rawfile_log['Rawfile'].extend(all_rawfiles)
-    # print(
-    #     f"  Prosit(Supplementary Data 3) {len(csv_nof_p_peptides)}, prosit(filtered from *.peptides) {len(nof_p_peptides)}")
 
     for var_add, pep_add in zip(['prosit_add', 'finetuned_add', "SM_v2"], [nof_p_peptides, f_p_petides, sm_v2_peptides]):
         to_dir = f"{no_tab_dir}/{var_add}"
@@ -225,5 +202,5 @@ for contain_name in all_alleles_names:
 # df.to_csv("./allele_rawfile.csv", index=False, sep='\t')
 total_table.to_csv(os.path.join(
     no_tab_dir, f"combined-fine-tuned-IAA-noIAA-{threshold}.csv"), index=False)
-print(f"IAA Total len {len(prosit_tab_IAA_noIAA)} - {allele_len_tab}")
-print(f"noIAA Total len {len(nof_tab_IAA_noIAA)} - {nf_allele_len_tab}")
+# print(f"IAA Total len {len(prosit_tab_IAA_noIAA)} - {allele_len_tab}")
+# print(f"noIAA Total len {len(nof_tab_IAA_noIAA)} - {nf_allele_len_tab}")
