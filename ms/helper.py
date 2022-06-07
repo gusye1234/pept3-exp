@@ -19,7 +19,8 @@ class EarlyStop:
             return False
         else:
             self._count += 1
-            self._best = (self._best*self._count + metrics)/(self._count + 1)
+            self._best = (self._best * self._count +
+                          metrics) / (self._count + 1)
             if self._count > self._pat:
                 return True
             return False
@@ -28,14 +29,14 @@ class EarlyStop:
 def spectral_distance(true, pred):
     true_mask = (true >= 0).float()
 
-    pred2com = pred*true_mask
-    true2com = true*true_mask
+    pred2com = pred * true_mask
+    true2com = true * true_mask
 
     pred2com = F.normalize(pred2com, dim=1)
     true2com = F.normalize(true2com, dim=1)
 
-    re = torch.sum(pred2com*true2com, dim=-1)
-    return torch.mean((2/torch.pi)*torch.arccos(re))
+    re = torch.sum(pred2com * true2com, dim=-1)
+    return torch.mean((2 / torch.pi) * torch.arccos(re))
 
 
 class InfoNCE(nn.Module):
@@ -55,7 +56,7 @@ class InfoNCE(nn.Module):
             pred_d = pred.repeat(B, 1)
         sas = spectral_angle(true_d, pred_d)
         scores_mat = sas.reshape(B, B)
-        nce = scores_mat/self.temp
+        nce = scores_mat / self.temp
         labels = torch.arange(
             start=0, end=B, dtype=torch.long, device=nce.device)
         # print([(i.item(), j.item())
@@ -64,7 +65,7 @@ class InfoNCE(nn.Module):
 
         if self.labmbda > 0:
             loss_sa = spectral_distance(true, pred)
-            loss = self.labmbda*loss_sa + (1 - self.labmbda)*loss_nce
+            loss = self.labmbda * loss_sa + (1 - self.labmbda) * loss_nce
             return loss, loss_nce.item(), loss_sa.item()
         else:
             return loss_nce, loss_nce.item(), 0
@@ -82,10 +83,10 @@ class FinetunePairSALoss(nn.Module):
         sas = spectral_angle(true, pred)
         sas_neg = spectral_angle(neg_true, neg_pred)
         # base = torch.mean(self.act(sas_neg - sas))
-        base = (1 - (sas-sas_neg))
+        base = (1 - (sas - sas_neg))
         base[base < 0] = 0
         base = torch.mean(base)
-        return base + self.l1_lambda*l1_v, base.item(), l1_v.item()
+        return base + self.l1_lambda * l1_v, base.item(), l1_v.item()
 
 
 class FinetuneSALoss(nn.Module):
@@ -96,7 +97,7 @@ class FinetuneSALoss(nn.Module):
 
     def forward(self, true, pred, label):
         true_mask = (true >= 0).float()
-        pred = pred*true_mask
+        pred = pred * true_mask
         l1_v = torch.abs(pred).sum(1).mean()
         if not self.if_pearson:
             sas = spectral_angle(true, pred)
@@ -104,7 +105,25 @@ class FinetuneSALoss(nn.Module):
         else:
             pears = pearson_coff(true, pred)
             base = torch.mean((pears - label)**2)
-        return base + self.l1_lambda*l1_v, base.item(), l1_v.item()
+        return base + self.l1_lambda * l1_v, base.item(), l1_v.item()
+
+
+class FinetuneSALossNoneg(nn.Module):
+    def __init__(self, l1_lambda=0.00000, pearson=False):
+        super().__init__()
+        self.l1_lambda = l1_lambda
+        self.if_pearson = pearson
+
+    def forward(self, true, pred, label):
+        true_mask = (true >= 0).float()
+        pred = pred * true_mask
+        l1_v = torch.abs(pred).sum(1).mean()
+        if not self.if_pearson:
+            base = spectral_distance(true, pred)
+        else:
+            pears = pearson_coff(true, pred)
+            base = torch.mean((pears - label)**2)
+        return base + self.l1_lambda * l1_v, base.item(), l1_v.item()
 
 
 class FinetuneComplexSALoss(nn.Module):
@@ -143,10 +162,10 @@ class L1Loss(nn.Module):
 
     def forward(self, true, pred):
         true_mask = (true >= 0).float()
-        pred = pred*true_mask
+        pred = pred * true_mask
         l1_v = torch.abs(pred).sum(1).mean()
         base = self.loss_fn(true, pred)
-        return base + self.lambdaa*l1_v, base.item(), l1_v.item()
+        return base + self.lambdaa * l1_v, base.item(), l1_v.item()
 
 
 def reshape_dims(array, MAX_SEQUENCE=30, ION_TYPES="yb", MAX_FRAG_CHARGE=3):
@@ -175,7 +194,7 @@ def mask_outofcharge(array, charges, mask=-1.0):
 
 def predict_sa(true, pred, data):
     # pred[pred < 0] = 0
-    pred = pred/pred.max()
+    pred = pred / pred.max()
     B = pred.shape[0]
     lengths = torch.count_nonzero(data['sequence_integer'], dim=1)
     charges = torch.argmax(data["precursor_charge_onehot"], dim=1) + 1
@@ -186,8 +205,9 @@ def predict_sa(true, pred, data):
     pred = tide_pred.view(B, -1)
     return spectral_angle(true, pred), pred
 
+
 def predict_pearson(true, pred, data):
-    pred = pred/pred.max()
+    pred = pred / pred.max()
     B = pred.shape[0]
     lengths = torch.count_nonzero(data['sequence_integer'], dim=1)
     charges = torch.argmax(data["precursor_charge_onehot"], dim=1) + 1
@@ -201,7 +221,7 @@ def predict_pearson(true, pred, data):
 
 def predict_sa_scale(true, pred, data, scale):
     pred[pred < 0] = 0
-    pred = pred/pred.max()
+    pred = pred / pred.max()
     B = pred.shape[0]
     lengths = torch.count_nonzero(data['sequence_integer'], dim=1)
     charges = torch.argmax(data["precursor_charge_onehot"], dim=1) + 1
@@ -221,33 +241,34 @@ def median_spectral_angle(true, pred):
 def spectral_angle(true, pred, scale=None):
     true_mask = (true >= 0).float()
 
-    pred2com = pred*true_mask
-    true2com = true*true_mask
+    pred2com = pred * true_mask
+    true2com = true * true_mask
 
     pred2com = F.normalize(pred2com)
     if scale is None:
         true2com = F.normalize(true2com)
     else:
-        true2com /= (scale+1e-9)
+        true2com /= (scale + 1e-9)
 
-    re = torch.sum(pred2com*true2com, dim=-1)
+    re = torch.sum(pred2com * true2com, dim=-1)
     re[re > 1] = 1
     re[re < -1] = -1
-    return 1 - (2/torch.pi)*torch.arccos(re)
+    return 1 - (2 / torch.pi) * torch.arccos(re)
+
 
 def pearson_coff(true, pred):
     true_mask = (true >= 0).float()
 
-    pred2com = pred*true_mask
-    true2com = true*true_mask
+    pred2com = pred * true_mask
+    true2com = true * true_mask
 
     pred2com -= torch.mean(pred2com, dim=1).unsqueeze(-1)
     true2com -= torch.mean(true2com, dim=1).unsqueeze(-1)
-    
+
     pred2com = F.normalize(pred2com, dim=1)
     true2com = F.normalize(true2com, dim=1)
 
-    return torch.sum(pred2com*true2com, dim=-1)
+    return torch.sum(pred2com * true2com, dim=-1)
 # def spectral_angle_nonormal(true, pred):
 #     true_mask = (true >= 0).float()
 
@@ -259,6 +280,7 @@ def pearson_coff(true, pred):
 
 #     re = torch.sum(pred2com*true2com, dim=-1)
 #     return - re
+
 
 def mse_distance(true, pred):
     return F.mse_loss(true, pred)

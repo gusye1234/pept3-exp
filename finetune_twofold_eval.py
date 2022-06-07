@@ -132,11 +132,11 @@ if __name__ == "__main__":
         if not os.path.exists(save_tab2):
             os.mkdir(save_tab2)
 
-        # tabels_file = fixed_features(
-        #     msms_file, raw_dir, f"/data/prosit/figs/figure6/{which}/percolator/try/prosit_l1")
-        # finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-        #     run_model, tabels_file, pearson=if_pearson, only_id2remove=False)
-
+        tabels_file = fixed_features(
+            msms_file, raw_dir, f"/data/prosit/figs/figure6/{which}/percolator/try/prosit_l1")
+        finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
+            run_model, tabels_file, pearson=if_pearson, only_id2remove=False, onlypos=True)
+        exit()
         # print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab2,
         #       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
         analysis_dict[which] = overlap_analysis_peptides(save_tab1, save_tab2)
