@@ -223,7 +223,7 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
             prosit = pd.read_csv(
                 origin_prosit_tab, sep='\t')
             prosit["SpecId"] = prosit["SpecId"].apply(
-                lambda x: "-".join(x.split('-')[:4]))
+                lambda x: "-".join(x.split('-')[:-1]))
             assert prosit['SpecId'].is_unique
             prosit = prosit.set_index("SpecId")
 

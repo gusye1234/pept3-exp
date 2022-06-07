@@ -306,6 +306,9 @@ if __name__ == "__main__":
     for which in Mels:
         print("-------------------------------")
         print("boosting figure3", which)
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}"
+        if not os.path.exists(save_tab):
+            os.mkdir(save_tab)
         save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
