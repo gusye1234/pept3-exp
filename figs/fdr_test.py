@@ -186,7 +186,8 @@ def fixed_features_random(msms_file, raw_dir, save_tab, over_write=False):
     save2 = os.path.splitext(msms_file)[0]+"_random_peaks.txt"
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
-
+    
+    print(save2, os.path.exists(save2))
     if not os.path.exists(save2):
         print("Ions generating[random version]")
         all_ids = np.array([int(p[0][name.index("id")]) for p in m_r])
@@ -355,7 +356,7 @@ def fixed_features_random(msms_file, raw_dir, save_tab, over_write=False):
     return table2save, shuffle_matches
 
 
-def one_pack_all(msms_file, raw_dir, model, sample_size=None, irt_model=None, id2remove=None, pearson=False, decoyid2keep=None, gpu_index=0):
+def one_pack_all(msms_file, raw_dir, model, sample_size=None, irt_model=None, id2remove=None, pearson=False, decoyid2keep=None):
 
     name = read_name(msms_file)
     ions_save = os.path.splitext(msms_file)[0]+"_ions.txt"
@@ -397,7 +398,7 @@ def one_pack_all(msms_file, raw_dir, model, sample_size=None, irt_model=None, id
             msms_data, name, nces=33)
 
         sas_delta, _ = get_sa_all(
-            model, data_nce_cand_delta, frag_msms_delta, pearson=pearson, gpu_index=gpu_index)
+            model, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta = sas_delta.cpu().numpy()
 
         # --------------------------------------------
@@ -407,7 +408,7 @@ def one_pack_all(msms_file, raw_dir, model, sample_size=None, irt_model=None, id
         data_nce_cand = generate_from_msms(msms_data, name, nces=33)
 
         sas, sa_tensors = get_sa_all(
-            model, data_nce_cand, frag_msms, pearson=pearson, gpu_index=gpu_index)
+            model, data_nce_cand, frag_msms, pearson=pearson)
         sas = sas.cpu().numpy()
         sa_tensors = sa_tensors.cpu().numpy()
         # --------------------------------------------
@@ -423,7 +424,7 @@ def one_pack_all(msms_file, raw_dir, model, sample_size=None, irt_model=None, id
         return pack, name
 
 
-def one_pack_random(msms_file, raw_dir, model, sample_size=None, irt_model=None, id2remove=None, pearson=False, shuffle_matches=None, gpu_index=0):
+def one_pack_random(msms_file, raw_dir, model, sample_size=None, irt_model=None, id2remove=None, pearson=False, shuffle_matches=None):
 
     name, msms_data = read_msms(
         msms_file)
@@ -463,7 +464,7 @@ def one_pack_random(msms_file, raw_dir, model, sample_size=None, irt_model=None,
             msms_data, name, nces=33)
 
         sas_delta, _ = get_sa_all(
-            model, data_nce_cand_delta, frag_msms_delta, pearson=pearson, gpu_index=gpu_index)
+            model, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta = sas_delta.cpu().numpy()
 
         # --------------------------------------------
@@ -473,7 +474,7 @@ def one_pack_random(msms_file, raw_dir, model, sample_size=None, irt_model=None,
         data_nce_cand = generate_from_msms(msms_data, name, nces=33)
 
         sas, sa_tensors = get_sa_all(
-            model, data_nce_cand, frag_msms, pearson=pearson, gpu_index=gpu_index)
+            model, data_nce_cand, frag_msms, pearson=pearson)
         sas = sas.cpu().numpy()
         sa_tensors = sa_tensors.cpu().numpy()
         # --------------------------------------------
@@ -489,7 +490,7 @@ def one_pack_random(msms_file, raw_dir, model, sample_size=None, irt_model=None,
         return pack, name
 
 
-def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, irt_model=None, id2remove=None, pearson=False, gpu_index=0):
+def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, irt_model=None, id2remove=None, pearson=False):
 
     name = read_name(msms_file)
     ions_save = os.path.splitext(msms_file)[0]+"_ions.txt"
@@ -518,9 +519,9 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         data_nce_cand_delta = generate_from_msms_delta(
             msms_data_target, name, nces=33)
         sas_delta1, _ = get_sa_all(
-            model1, data_nce_cand_delta, frag_msms_delta, pearson=pearson, gpu_index=gpu_index)
+            model1, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta2, _ = get_sa_all(
-            model2, data_nce_cand_delta, frag_msms_delta, pearson=pearson, gpu_index=gpu_index)
+            model2, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta_target = ((sas_delta1 + sas_delta2)/2).cpu().numpy()
         # --------------------------------------------
         frag_msms_delta = [bio_helper.reverse_annotation(
@@ -528,7 +529,7 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         data_nce_cand_delta = generate_from_msms_delta(
             msms_data_decoy1, name, nces=33)
         sas_delta_decoy1, _ = get_sa_all(
-            model2, data_nce_cand_delta, frag_msms_delta, pearson=pearson, gpu_index=gpu_index)
+            model2, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta_decoy1 = sas_delta_decoy1.cpu().numpy()
         # --------------------------------------------
         frag_msms_delta = [bio_helper.reverse_annotation(
@@ -536,7 +537,7 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         data_nce_cand_delta = generate_from_msms_delta(
             msms_data_decoy2, name, nces=33)
         sas_delta_decoy2, _ = get_sa_all(
-            model1, data_nce_cand_delta, frag_msms_delta, pearson=pearson, gpu_index=gpu_index)
+            model1, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta_decoy2 = sas_delta_decoy2.cpu().numpy()
         
         # --------------------------------------------
@@ -544,9 +545,9 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         data_nce_cand = generate_from_msms(msms_data_target, name, nces=33)
 
         sas1, sa_tensors1 = get_sa_all(
-            model1, data_nce_cand, frag_msms_target, pearson=pearson, gpu_index=gpu_index)
+            model1, data_nce_cand, frag_msms_target, pearson=pearson)
         sas2, sa_tensors2 = get_sa_all(
-            model1, data_nce_cand, frag_msms_target, pearson=pearson, gpu_index=gpu_index)
+            model1, data_nce_cand, frag_msms_target, pearson=pearson)
         sas_target = ((sas1 + sas2)/2).cpu().numpy()
         sa_tensors_target = ((sa_tensors1 + sa_tensors2)/2).cpu().numpy()
         # --------------------------------------------
@@ -555,7 +556,7 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         data_nce_cand = generate_from_msms(
             msms_data_decoy1, name, nces=33)
         sas_decoy1,sa_tensors_decoy1 = get_sa_all(
-            model2, data_nce_cand, frag_msms_decoy1, pearson=pearson, gpu_index=gpu_index)
+            model2, data_nce_cand, frag_msms_decoy1, pearson=pearson)
         sas_decoy1 = sas_decoy1.cpu().numpy()
         sa_tensors_decoy1 = sa_tensors_decoy1.cpu().numpy()
         # --------------------------------------------
@@ -564,7 +565,7 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         data_nce_cand = generate_from_msms(
             msms_data_decoy2, name, nces=33)
         sas_decoy2, sa_tensors_decoy2 = get_sa_all(
-            model1, data_nce_cand, frag_msms_decoy2, pearson=pearson, gpu_index=gpu_index)
+            model1, data_nce_cand, frag_msms_decoy2, pearson=pearson)
         sas_decoy2 = sas_decoy2.cpu().numpy()
         sa_tensors_decoy2 = sa_tensors_decoy2.cpu().numpy()
         # --------------------------------------------
@@ -593,7 +594,8 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         return pack, name
 
 
-def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_model=None, need_all=False, id2remove=None, totest=None, pearson=False, gpu_index=0):
+
+def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_model=None, need_all=False, id2remove=None, totest=None, pearson=False):
     # pack, msms_name = one_pack_all(
     #     msms_file,
     #     raw_dir,
@@ -603,16 +605,15 @@ def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_mo
     pack, msms_name = one_pack_all(
         msms_file,
         raw_dir,
-        run_model, sample_size=sample_size, irt_model=irt_model, id2remove=id2remove, pearson=pearson, gpu_index=gpu_index)
+        run_model, sample_size=sample_size, irt_model=irt_model, id2remove=id2remove, pearson=pearson)
 
     # %%
     need_col = ['id', "Raw file", 'Scan number', "Reverse", "Mass",
                 "Sequence", "Charge", "Missed cleavages", "Length", "Mass Error [ppm]",
                 "Score", "Delta score", "All modified sequences", "Retention time"]
     i_d = {}
-    lower_name = [n.lower() for n in msms_name]
     for c in need_col:
-        i_d[c] = lower_name.index(c.lower())
+        i_d[c] = msms_name.index(c)
 
     # %%
     Features = {}
@@ -651,7 +652,7 @@ def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_mo
 
     def add_missedCleavages(pack):
         Features['missedCleavages'] = [
-            int(m[0][i_d["Missed cleavages"]]) if len(m[0][i_d["Missed cleavages"]]) else 0 for m in pack]
+            int(m[0][i_d["Missed cleavages"]]) for m in pack]
 
     def add_seqlength(pack):
         Features['sequence_length'] = np.array(
@@ -935,7 +936,7 @@ def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_mo
             f"{save_tab}/spectral_all.tab", sep='\t', index=False)
 
 
-def fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab, sample_size=300000, irt_model=None, need_all=False, id2remove=None, totest=None, pearson=False, gpu_index=0):
+def fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab, sample_size=300000, irt_model=None, need_all=False, id2remove=None, totest=None, pearson=False):
     # pack, msms_name = one_pack_all(
     #     msms_file,
     #     raw_dir,
@@ -945,16 +946,15 @@ def fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab, sampl
     pack, msms_name = one_pack_all_twofold(
         msms_file,
         raw_dir,
-        run_model1, run_model2, sample_size=sample_size, irt_model=irt_model, id2remove=id2remove, pearson=pearson, gpu_index=gpu_index)
+        run_model1, run_model2, sample_size=sample_size, irt_model=irt_model, id2remove=id2remove, pearson=pearson)
 
     # %%
     need_col = ['id', "Raw file", 'Scan number', "Reverse", "Mass",
                 "Sequence", "Charge", "Missed cleavages", "Length", "Mass Error [ppm]",
                 "Score", "Delta score", "All modified sequences", "Retention time"]
     i_d = {}
-    lower_name = [n.lower() for n in msms_name]
     for c in need_col:
-        i_d[c] = lower_name.index(c.lower())
+        i_d[c] = msms_name.index(c)
 
     # %%
     Features = {}
@@ -993,7 +993,7 @@ def fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab, sampl
 
     def add_missedCleavages(pack):
         Features['missedCleavages'] = [
-            int(m[0][i_d["Missed cleavages"]]) if len(m[0][i_d["Missed cleavages"]]) else 0 for m in pack]
+            int(m[0][i_d["Missed cleavages"]]) for m in pack]
 
     def add_seqlength(pack):
         Features['sequence_length'] = np.array(

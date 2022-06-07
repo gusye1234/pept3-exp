@@ -240,7 +240,7 @@ def semisupervised_finetune_random_match(model, input_table, batch_size=2048, gp
 
 def semisupervised_finetune_twofold(ori_model, input_table, batch_size=1024, gpu_index=0, max_epochs=10,
                                     update_interval=1, q_threshold=0.1, validate_q_threshold=0.01, pearson=False,
-                                    enable_test=False, only_id2remove=False):
+                                    enable_test=False, only_id2remove=False, onlypos=False):
     helper.set_seed(2022)
     if torch.cuda.is_available():
         device = torch.device(f"cuda:{gpu_index}")
@@ -253,7 +253,10 @@ def semisupervised_finetune_twofold(ori_model, input_table, batch_size=1024, gpu
         model = deepcopy(ori_model)
         model = model.train()
         optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, eps=1e-8)
-        loss_fn = helper.FinetuneSALoss(pearson=pearson)
+        if not onlypos:
+            loss_fn = helper.FinetuneSALoss(pearson=pearson)
+        else:
+            loss_fn = helper.FinetuneSALossNoneg(pearson=pearson)
         model = model.to(device)
         data_loader = DataLoader(
             dataset.train_all_data(), batch_size=batch_size, shuffle=False)

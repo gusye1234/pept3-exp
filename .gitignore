@@ -11,6 +11,7 @@ __pycache__/
 *$py.class
 result.txt
 figs/fig
+figs/fig/
 # C extensions
 *.so
 

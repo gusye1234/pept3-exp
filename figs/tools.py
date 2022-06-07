@@ -98,16 +98,10 @@ def loc_msms_in_raw(data, raws_dir):
             for i, line in enumerate(read):
                 if i == 0:
                     continue
-                fields = line.strip().split(',')
-                try:
-                    scan_number = int(fields[0])
-                except:
-                    print(fields[0], "unable to parse")
-                    continue
-                all_lines.append(fields)
+                all_lines.append(line.strip().split(','))
             all_lines.sort(key=lambda x: int(x[0]))
-        # print([x[0] for x in all_lines][-20:])
-        # print([x[1] for x in scans][29486:29486+20])
+        # print([x[0] for x in all_lines][80:180])
+        # print([x[1] for x in scans][40:50])
         for i, line in enumerate(all_lines):
             # if i == 0:
             #     continue
@@ -122,7 +116,7 @@ def loc_msms_in_raw(data, raws_dir):
                 break
         total_spect += len(scans)
         if index_now < len(scans):
-            print(
+            raise TypeError(
                 f"{f} -- Not match spect: No.{index_now}-{scans[index_now][1]} in {len(scans)}")
         # print("Done", f)
     return matches
@@ -360,9 +354,9 @@ def get_irt_all(run_model, data_cand):
     return all_rt
 
 
-def get_sa_all(run_model, data_nce_cand, frag_msms, gpu_index=0, **kwargs):
+def get_sa_all(run_model, data_nce_cand, frag_msms, pearson=False):
     if torch.cuda.is_available():
-        device = torch.device(f"cuda:{gpu_index}")
+        device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
@@ -422,11 +416,14 @@ def get_sa_from_array(run_model, seqs, nces, charges, frag_msms, gpu_index=0, **
             pred = run_model(d)
             gt_frag = to_tensor(frag_msms[b:b + 512]).to(device)
             # gt_frag = gt_frag/gt_frag.max()
-            sas, pred = helper.predict_sa(gt_frag, pred, d)
+            if not pearson:
+                sas, pred = helper.predict_sa(gt_frag, pred, d)
+            else:
+                sas, pred = helper.predict_pearson(gt_frag, pred, d)
             # check_empty = torch.any(d['peptide_mask'], dim=1)
             # sas[~check_empty] = 0.
-            sass.append(sas.cpu())
-            pred_tensor.append(pred.cpu())
+            sass.append(sas)
+            pred_tensor.append(pred)
         all_sa = torch.cat(sass, dim=0)
         all_pred = torch.cat(pred_tensor, dim=0)
     return all_sa, all_pred
@@ -686,7 +683,6 @@ def save_m_r_ions(msms_file, raw_dir, sample_size=None):
     msms_data.sort(key=lambda x: int(x[name.index("id")]))
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
-    m_r = filter_m_r(m_r)
     print(len(msms_data), len(m_r))
     matched_ions_pre = generate_matched_ions(m_r)
     matched_ions_pre_delta = generate_matched_ions_delta(m_r)

@@ -43,15 +43,16 @@ xlabel = ["sequence_integer",
 ylabel = "intensities_raw"
 
 # Load data
-config_data = json.load(open("./checkpoints/boosting.json"))
+config_data = json.load(open("./checkpoints/data.json"))
 frag_dir = config_data['frag']
-which_one = "hcd"
-train_file = os.path.join(frag_dir, f"prediction_{which_one}_train.hdf5")
-val_file = os.path.join(frag_dir, f"prediction_{which_one}_val.hdf5")
-holdout_file = os.path.join(frag_dir, f"prediction_{which_one}_ho.hdf5")
+train_val = os.path.join(frag_dir, "traintest_hcd.hdf5")
+holdout = os.path.join(frag_dir, "holdout_hcd.hdf5")
+irt_data = config_data['irt']
 
-train_data = FragDataset(train_file, val_file=val_file, test_file=holdout_file)
-# train_data = FragDataset(holdout, ratio=0.8)
+if args.debug == 0:
+    train_data = FragDataset(train_val, test_file=holdout, ratio=0.8)
+else:
+    train_data = FragDataset(holdout, ratio=0.8)
 
 train_loader = DataLoader(
     train_data.train(), batch_size=TRAIN_BATCH_SIZE, shuffle=True)
@@ -59,6 +60,7 @@ valid_loader = DataLoader(
     train_data.valid(), batch_size=PRED_BATCH_SIZE, shuffle=False, drop_last=True)
 test_loader = DataLoader(
     train_data.test(), batch_size=PRED_BATCH_SIZE, shuffle=False, drop_last=True)
+
 # Prepare model stuffs
 
 if torch.cuda.is_available():
@@ -83,11 +85,11 @@ def loss_fn(true, pred):
 interval = 100
 choice = 'irt'
 best_loss = torch.inf
-stopper = helper.EarlyStop(pat=30)
+stopper = helper.EarlyStop(pat=20)
 writer = SummaryWriter(f"./logs/frag/{model.comment()}-{args.batch}")
 writer.start = False
 
-save_name = f"./checkpoints/frag/best_frag_{which_one}_{model.comment()}-{args.batch}.pth"
+save_name = f"./checkpoints/frag/best_frag_l1_{model.comment()}-{args.batch}.pth"
 if os.path.exists(save_name) and args.load > 0:
     model.load_state_dict(torch.load(save_name, map_location=device))
     print("Load from", save_name)
