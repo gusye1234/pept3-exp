@@ -392,7 +392,7 @@ def get_sa_all(run_model, data_nce_cand, frag_msms, pearson=False):
     return all_sa, all_pred
 
 
-def get_sa_from_array(run_model, seqs, nces, charges, frag_msms, gpu_index=0, **kwargs):
+def get_sa_from_array(run_model, seqs, nces, charges, frag_msms, gpu_index=0, pearson=False, **kwargs):
     if torch.cuda.is_available():
         device = torch.device(f"cuda:{gpu_index}")
     else:

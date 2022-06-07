@@ -293,11 +293,11 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 6
-    set_threshold = 0.01
+    gpu_index = 7
+    set_threshold = 0.1
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
-    for which in ['HLA_1']:
+    for which in ['Mel15']:
         print("-------------------------------")
         print("boosting figure3", which)
         save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/percolator_hdf5/"

@@ -295,11 +295,11 @@ if __name__ == "__main__":
 
     sample_size = None
     gpu_index = 5
-    set_threshold = 1
+    set_threshold = 0.1
     max_epochs = 20
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
-    hla_mel = pd.read_csv("./figs/HLA_Mel.csv")
+    hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
     hla_mel = hla_mel[hla_mel['Experiment'].apply(
         lambda x: x.endswith("HLA-I"))]
     Mels = hla_mel['Experiment'].unique()
