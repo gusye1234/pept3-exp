@@ -1,4 +1,5 @@
 import pandas as pd
+from tqdm import tqdm
 
 
 def counting(msmsfile, percolator_tab_file):
@@ -18,11 +19,11 @@ def quick_1(psms):
     return fdr_1
 
 
+# --------------
 core_cols = ['Dataset', "Sub-type", "#Maxquant 100% FDR PSMs", "#Filtered 100% PSMs",
              "#Targets in Filtered 100% PSMs", "#Decoys in Filtered 100% PSMs", "#rescored pDeep2 SA-feature 1% PSMs", "#finetuned pDeep2 SA-feature 1% PSMs", "#rescored prosit SA-feature 1% PSMs", "#finetuned prosit SA-feature 1% PSMs", "#rescored pDeep2 Prosit-feature 1% PSMs", "#finetuned pDeep2 Prosit-feature 1% PSMs", "#rescored prosit Prosit-feature 1% PSMs", "#finetuned prosit Prosit-feature 1% PSMs"]
 core_data = []
 
-# --------------
 regenerated_those_three = False
 if regenerated_those_three:
     dataset = "Bekker-Jensen"
@@ -96,7 +97,57 @@ else:
          20986, 30491, 22801, 33817, 34513, 38135, 36908, 39150),
         ('Metaproteomics', 'sprot_bacteria_human', 346649, 329605, 183636, 145969, 21490, 28438, 22962, 32010, 32744, 35303, 35144, 37111)])
 
+df_1 = pd.DataFrame(columns=core_cols, data=core_data)
 
-core_pd = pd.DataFrame(columns=core_cols, data=core_data)
-print(core_pd.head())
-core_pd.to_csv("data/supp1.csv", index=False)
+# ---------------------------
+# HLA class 1
+core_cols = ["Mels", "#Maxquant 100% FDR PSMs", "#Filtered 100% PSMs",
+             "#Targets in Filtered 100% PSMs", "#Decoys in Filtered 100% PSMs", "#rescored prosit Prosit-feature 1% PSMs", "#finetuned prosit Prosit-feature 1% PSMs"]
+
+core_data = []
+dataset = "melanoma patient HLA class I"
+hla_mel = pd.read_csv("../figs/data/HLA_Mel.csv")
+hla_mel = hla_mel[hla_mel['Experiment'].apply(lambda x: x.endswith("HLA-I"))]
+Mels = hla_mel['Experiment'].unique()
+for which in tqdm(Mels):
+    origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
+    msms_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/msms.txt"
+    counts = counting(msms_file, origin_prosit_tab)
+    no_ft_fdr1 = quick_1(
+        f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit_target.psms")
+    ft_fdr1 = quick_1(
+        f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_0.1/{which}/prosit_target.psms")
+    core_data.append((
+        which, *counts, no_ft_fdr1, ft_fdr1
+    ))
+df_2 = pd.DataFrame(columns=core_cols, data=core_data)
+# ----------------------------------------
+# IAA noIAA
+core_cols = ["Alleles", "#Maxquant 100% FDR PSMs", "#Filtered 100% PSMs",
+             "#Targets in Filtered 100% PSMs", "#Decoys in Filtered 100% PSMs", "#rescored prosit Prosit-feature 1% PSMs", "#finetuned prosit Prosit-feature 1% PSMs"]
+core_data = []
+dataset = 'monoallelic HLA Class I'
+alleles_rawfile = {}
+with open("../figs/data/allele_raw.txt") as f:
+    for l in f:
+        pack = l.strip().split("\t")
+        alleles_rawfile[pack[0]] = set(pack[1:])
+Alleles = sorted(alleles_rawfile.keys())
+for which in tqdm(Alleles):
+    origin_prosit_tab = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/prosit.tab"
+    msms_file = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/msms.txt"
+    counts = counting(msms_file, origin_prosit_tab)
+    no_ft_fdr1 = quick_1(
+        f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/prosit_target.psms")
+    ft_fdr1 = quick_1(
+        f"/data1/yejb/prosit/figure3/percolator_hdf5_allele_0.1/{which}/prosit_target.psms")
+    core_data.append((
+        which, *counts, no_ft_fdr1, ft_fdr1
+    ))
+df_3 = pd.DataFrame(columns=core_cols, data=core_data)
+
+writer = pd.ExcelWriter("data/supp1.xlsx", engine='openpyxl')
+df_1.to_excel(writer, sheet_name="Bekker,Davis,Metaproteomics", index=False)
+df_2.to_excel(writer, sheet_name="melanoma patient HLA class I", index=False)
+df_3.to_excel(writer, sheet_name='monoallelic HLA Class I', index=False)
+writer.save()

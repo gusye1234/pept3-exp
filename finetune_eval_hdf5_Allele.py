@@ -301,7 +301,7 @@ if __name__ == "__main__":
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
     alleles_rawfile = {}
-    with open("figs/allele_raw.txt") as f:
+    with open("figs/data/allele_raw.txt") as f:
         for l in f:
             pack = l.strip().split("\t")
             alleles_rawfile[pack[0]] = set(pack[1:])
