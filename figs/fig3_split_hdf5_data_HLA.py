@@ -13,7 +13,7 @@ hdf5_data = os.path.join(check_dir, "data.hdf5")
 csv_data = os.path.join(check_dir, "percolator/features.csv")
 prosit_data = os.path.join(check_dir, "percolator/prosit.tab")
 
-hla_mel = pd.read_csv("./HLA_Mel.csv")
+hla_mel = pd.read_csv("./data/HLA_Mel.csv")
 hla_mel = hla_mel[hla_mel['Experiment'].apply(lambda x: x.endswith("HLA-I"))]
 naming_map = {
     hla_mel.iloc[row]['Raw file']: hla_mel.iloc[row]['Experiment']
@@ -50,35 +50,60 @@ for rawf, mel in naming_map.items():
 #             f.create_dataset(h5key, keydata.shape, keydata.dtype, keydata)
 # print(f"HDF5: {len(Rawfiles)} - {c_count}")
 
-FEAT = pd.read_csv(csv_data)
-index_tab = FEAT.set_index('raw_file')
-c_count = 0
-for MEL in mel2raw.keys():
-    SAVE = os.path.join(save_dir, MEL)
-    SAVE = os.path.join(SAVE, "percolator")
-    if not os.path.exists(SAVE):
-        os.mkdir(SAVE)
-    df = None
-    for raw in mel2raw[MEL]:
-        target = index_tab.filter(like=raw, axis=0)
-        if df is None:
-            df = target
-        else:
-            df = pd.concat([df, target], ignore_index=False)
-    print(f"{MEL} for {len(df)}")
-    c_count += len(df)
-    before_keys = list(df.keys())
-    df.reset_index(inplace=True)
-    df = df.sort_values(by=['raw_file', "scan_number"])
-    df.to_csv(os.path.join(SAVE, 'features.csv'), index=False)
-print(f"Features: {len(FEAT)} - {c_count}")
+# FEAT = pd.read_csv(csv_data)
+# index_tab = FEAT.set_index('raw_file')
+# c_count = 0
+# for MEL in mel2raw.keys():
+#     SAVE = os.path.join(save_dir, MEL)
+#     SAVE = os.path.join(SAVE, "percolator")
+#     if not os.path.exists(SAVE):
+#         os.mkdir(SAVE)
+#     df = None
+#     for raw in mel2raw[MEL]:
+#         target = index_tab.filter(like=raw, axis=0)
+#         if df is None:
+#             df = target
+#         else:
+#             df = pd.concat([df, target], ignore_index=False)
+#     print(f"{MEL} for {len(df)}")
+#     c_count += len(df)
+#     before_keys = list(df.keys())
+#     df.reset_index(inplace=True)
+#     df = df.sort_values(by=['raw_file', "scan_number"])
+#     df.to_csv(os.path.join(SAVE, 'features.csv'), index=False)
+# print(f"Features: {len(FEAT)} - {c_count}")
 
-PROSIT = pd.read_csv(prosit_data, sep='\t')
-index_tab = PROSIT.set_index('SpecId')
+# PROSIT = pd.read_csv(prosit_data, sep='\t')
+# index_tab = PROSIT.set_index('SpecId')
+# c_count = 0
+# for MEL in mel2raw.keys():
+#     SAVE = os.path.join(save_dir, MEL)
+#     SAVE = os.path.join(SAVE, "percolator")
+#     if not os.path.exists(SAVE):
+#         os.mkdir(SAVE)
+#     df = None
+#     for raw in mel2raw[MEL]:
+#         target = index_tab.filter(like=raw, axis=0)
+#         if df is None:
+#             df = target
+#         else:
+#             df = pd.concat([df, target], ignore_index=False)
+#     print(f"{MEL} for {len(df)}")
+#     c_count += len(df)
+#     before_keys = list(df.keys())
+#     df.reset_index(inplace=True)
+#     df = df.sort_values(by=['SpecId', "ScanNr"])
+#     df.to_csv(os.path.join(SAVE, 'prosit.tab'), sep='\t', index=False)
+# print(f"Prosit: {len(PROSIT)} - {c_count}")
+
+
+maxquant_file = os.path.join(
+    "/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/txt/msms.txt")
+MAXQUANT_tab = pd.read_csv(maxquant_file, sep='\t')
+index_tab = MAXQUANT_tab.set_index("Raw file")
 c_count = 0
 for MEL in mel2raw.keys():
     SAVE = os.path.join(save_dir, MEL)
-    SAVE = os.path.join(SAVE, "percolator")
     if not os.path.exists(SAVE):
         os.mkdir(SAVE)
     df = None
@@ -90,8 +115,6 @@ for MEL in mel2raw.keys():
             df = pd.concat([df, target], ignore_index=False)
     print(f"{MEL} for {len(df)}")
     c_count += len(df)
-    before_keys = list(df.keys())
     df.reset_index(inplace=True)
-    df = df.sort_values(by=['SpecId', "ScanNr"])
-    df.to_csv(os.path.join(SAVE, 'prosit.tab'), sep='\t', index=False)
-print(f"Prosit: {len(PROSIT)} - {c_count}")
+    df.to_csv(os.path.join(SAVE, 'msms.txt'), sep='\t', index=False)
+print(f"Maxquant: {len(MAXQUANT_tab)} - {c_count}")

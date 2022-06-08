@@ -67,6 +67,17 @@ else:
         ('Metaproteomics', 'sprot_bacteria_human', 346649, 329605, 183636, 145969)
     ])
 
+# HLA class 1
+hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
+hla_mel = hla_mel[hla_mel['Experiment'].apply(lambda x: x.endswith("HLA-I"))]
+Mels = hla_mel['Experiment'].unique()
+HLA_naming_map = {
+    hla_mel.iloc[row]['Raw file']: hla_mel.iloc[row]['Experiment']
+    for row in range(len(hla_mel))
+}
+for which in Mels:
+    origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
+    pass
 
 core_pd = pd.DataFrame(columns=core_cols, data=core_data)
 print(core_pd.head())
