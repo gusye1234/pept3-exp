@@ -9,15 +9,17 @@ def counting(msmsfile, percolator_tab_file):
     filter_target = (per_tab['Label'] == 1).sum()
     filter_decoy = (per_tab['Label'] == -1).sum()
     del per_tab
-    # psms_result = pd.read_csv(percolator_psms, sep='\t')
-    # prosit_1 = (psms_result['q-value'] < 0.01).sum()
-    # psms_result = pd.read_csv(finetuned_psms, sep='\t')
-    # ft_1 = (psms_result['q-value'] < 0.01).sum()
     return psms_counting, filtered_psms, filter_target, filter_decoy
 
 
+def quick_1(psms):
+    psms_result = pd.read_csv(psms, sep='\t')
+    fdr_1 = (psms_result['q-value'] < 0.01).sum()
+    return fdr_1
+
+
 core_cols = ['Dataset', "Sub-type", "#Maxquant 100% FDR PSMs", "#Filtered 100% PSMs",
-             "#Targets in Filtered 100% PSMs", "#Decoys in Filtered 100% PSMs"]
+             "#Targets in Filtered 100% PSMs", "#Decoys in Filtered 100% PSMs", "#rescored pDeep2 SA-feature 1% PSMs", "#finetuned pDeep2 SA-feature 1% PSMs", "#rescored prosit SA-feature 1% PSMs", "#finetuned prosit SA-feature 1% PSMs", "#rescored pDeep2 Prosit-feature 1% PSMs", "#finetuned pDeep2 Prosit-feature 1% PSMs", "#rescored prosit Prosit-feature 1% PSMs", "#finetuned prosit Prosit-feature 1% PSMs"]
 core_data = []
 
 # --------------
@@ -27,11 +29,17 @@ if regenerated_those_three:
     frag_model = 'prosit_l1'
     for which in ["trypsin", 'chymo', "lysc", "gluc"]:
         msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
-        save_tab1 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/no_finetuned_twofold/sa.tab"
-        # save_tab2 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_twofold/sa.tab"
+        save_tab1 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1/no_finetuned_twofold/sa.tab"
         counts = counting(msms_file, save_tab1)
+        fdr_1s = []
+        for feat in ['sa', 'prosit_best']:
+            for frag_model in ['pdeep2', 'prosit_l1']:
+                save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
+                ft_save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+                fdr_1s.append(quick_1(save_tab))
+                fdr_1s.append(quick_1(ft_save_tab))
         core_data.append((
-            dataset, which, *counts
+            dataset, which, *counts, *fdr_1s
         ))
 
     # ------------------
@@ -41,8 +49,15 @@ if regenerated_those_three:
     save_tab1 = save_tab1 = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_twofold/sa.tab"
     # save_tab2 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_twofold/sa.tab"
     counts = counting(msms_file, save_tab1)
+    fdr_1s = []
+    for feat in ['sa', 'prosit_best']:
+        for frag_model in ['pdeep2', 'prosit_l1']:
+            save_tab = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
+            ft_save_tab = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+            fdr_1s.append(quick_1(save_tab))
+            fdr_1s.append(quick_1(ft_save_tab))
     core_data.append((
-        dataset, "", *counts
+        dataset, "", *counts, *fdr_1s
     ))
     # ---------------------
     dataset = 'Metaproteomics'
@@ -51,21 +66,35 @@ if regenerated_those_three:
         msms_file = f"/data/prosit/figs/figure6/{which}/maxquant/txt/msms.txt"
         save_tab1 = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_twofold/sa.tab"
         counts = counting(msms_file, save_tab1)
+        fdr_1s = []
+        for feat in ['sa', 'prosit_best']:
+            for frag_model in ['pdeep2', 'prosit_l1']:
+                save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
+                ft_save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+                fdr_1s.append(quick_1(save_tab))
+                fdr_1s.append(quick_1(ft_save_tab))
         core_data.append((
-            dataset, which, *counts
+            dataset, which, *counts, *fdr_1s
         ))
 else:
     core_data.extend([
-        ("Bekker-Jensen", 'trypsin', 761563, 663031, 502736, 160295),
-        ("Bekker-Jensen", 'chymo', 990431, 921917, 596067, 325850),
-        ("Bekker-Jensen", 'lysc', 834749, 714865, 500689, 214176),
-        ("Bekker-Jensen", 'gluc', 898603, 774544, 514496, 260048),
-        ('Davis', '', 1148358, 141702, 105864, 35838),
-        ('Metaproteomics', 'sprot_human', 355909, 337862, 175446, 162416),
-        ('Metaproteomics', 'IGC', 358491, 342049, 228140, 113909),
-        ('Metaproteomics', 'sprot_all', 351263, 334216, 187417, 146799),
-        ('Metaproteomics', 'sprot_bacteria_human', 346649, 329605, 183636, 145969)
-    ])
+        ('Bekker-Jensen', 'trypsin', 761563, 663031, 502736, 160295,
+         336262, 344939, 336109, 343046, 343341, 348017, 344015, 346872),
+        ('Bekker-Jensen', 'chymo', 990431, 921917, 596067, 325850,
+         155740, 234868, 150314, 239636, 254858, 265466, 259423, 267979),
+        ('Bekker-Jensen', 'lysc', 834749, 714865, 500689, 214176,
+         261380, 278672, 261846, 280695, 281830, 288102, 282866, 287623),
+        ('Bekker-Jensen', 'gluc', 898603, 774544, 514496, 260048,
+         120788, 209760, 124314, 207521, 238502, 247307, 241551, 247290),
+        ('Davis', '', 1148358, 141702, 105864, 35838, 58588,
+         69201, 62117, 69775, 70209, 71125, 70380, 71271),
+        ('Metaproteomics', 'sprot_human', 355909, 337862, 175446,
+         162416, 9688, 16470, 11624, 15676, 16763, 18212, 17502, 18358),
+        ('Metaproteomics', 'IGC', 358491, 342049, 228140, 113909,
+         82524, 101779, 82615, 101129, 101635, 109092, 105573, 109101),
+        ('Metaproteomics', 'sprot_all', 351263, 334216, 187417, 146799,
+         20986, 30491, 22801, 33817, 34513, 38135, 36908, 39150),
+        ('Metaproteomics', 'sprot_bacteria_human', 346649, 329605, 183636, 145969, 21490, 28438, 22962, 32010, 32744, 35303, 35144, 37111)])
 
 
 core_pd = pd.DataFrame(columns=core_cols, data=core_data)

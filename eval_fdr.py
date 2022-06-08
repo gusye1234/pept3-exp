@@ -82,7 +82,7 @@ if __name__ == "__main__":
     #     print(eval_fdr(None, None, None, save_tab, irt_model=prosit_irt,
     #                    sample_size=sample_size, gpu_index=gpu_index).to_string())
 
-    set_threshold = 0.1
+    # set_threshold = 0.1
     # hla_mel = pd.read_csv("./figs/HLA_Mel.csv")
     # hla_mel = hla_mel[hla_mel['Experiment'].apply(
     #     lambda x: x.endswith("HLA-I"))]
@@ -94,15 +94,15 @@ if __name__ == "__main__":
     #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator"
     # print(eval_fdr(None, None, None, save_tab, irt_model=None,
     #                sample_size=None, gpu_index=0).to_string())
-    alleles_rawfile = {}
-    with open("figs/allele_raw.txt") as f:
-        for l in f:
-            pack = l.strip().split("\t")
-            alleles_rawfile[pack[0]] = set(pack[1:])
-    Alleles = sorted(alleles_rawfile.keys())
-    for which in Alleles:
-        print("-------------------------------")
-        print("boosting ", which)
-        save_tab = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator"
-        print(eval_fdr(None, None, None, save_tab, irt_model=None,
-                       sample_size=None, gpu_index=0).to_string())
+    # alleles_rawfile = {}
+    # with open("figs/allele_raw.txt") as f:
+    #     for l in f:
+    #         pack = l.strip().split("\t")
+    #         alleles_rawfile[pack[0]] = set(pack[1:])
+    # Alleles = sorted(alleles_rawfile.keys())
+    # for which in Alleles:
+    #     print("-------------------------------")
+    #     print("boosting ", which)
+    #     save_tab = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator"
+    #     print(eval_fdr(None, None, None, save_tab, irt_model=None,
+    #                    sample_size=None, gpu_index=0).to_string())

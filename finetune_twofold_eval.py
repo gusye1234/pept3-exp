@@ -86,7 +86,7 @@ if __name__ == "__main__":
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "prosit_l1"
+    frag_model = "pdeep2"
     if frag_model == "trans":
         run_model = model.TransProBest()
         run_model.load_state_dict(torch.load(
@@ -135,12 +135,13 @@ if __name__ == "__main__":
         tabels_file = fixed_features(
             msms_file, raw_dir, f"/data/prosit/figs/figure6/{which}/percolator/try/prosit_l1")
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-            run_model, tabels_file, pearson=if_pearson, only_id2remove=False, onlypos=True)
-        exit()
+            run_model, tabels_file, pearson=if_pearson, only_id2remove=True, onlypos=True)
         # print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab2,
         #       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
+        print(eval_fdr(run_model, run_model, msms_file, raw_dir, save_tab1,
+              irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
         analysis_dict[which] = overlap_analysis_peptides(save_tab1, save_tab2)
-
+    exit()
     for which in ["trypsin", 'chymo', "lysc", "gluc"]:
         print("-------------------------------")
         print(which)
