@@ -30,7 +30,7 @@ all_alleles_names = sorted(no_prosit_tab['Allele'].dropna().unique())
 #         alleles_rawfile[allele] = set(need_raws)
 #         f.write("\t".join([allele] + list(alleles_rawfile[allele])) + "\n")
 alleles_rawfile = {}
-with open("allele_raw.txt") as f:
+with open("data/allele_raw.txt") as f:
     for l in f:
         pack = l.strip().split("\t")
         alleles_rawfile[pack[0]] = set(pack[1:])

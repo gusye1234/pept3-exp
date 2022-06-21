@@ -82,18 +82,18 @@ if __name__ == "__main__":
     #     print(eval_fdr(None, None, None, save_tab, irt_model=prosit_irt,
     #                    sample_size=sample_size, gpu_index=gpu_index).to_string())
 
-    # set_threshold = 0.1
-    # hla_mel = pd.read_csv("./figs/HLA_Mel.csv")
-    # hla_mel = hla_mel[hla_mel['Experiment'].apply(
-    #     lambda x: x.endswith("HLA-I"))]
-    # Mels = hla_mel['Experiment'].unique()
-    # for which in Mels:
-    #     # for which in ['Mel15']:
-    #     print("-------------------------------")
-    #     print("boosting figure3", which)
-    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator"
-    # print(eval_fdr(None, None, None, save_tab, irt_model=None,
-    #                sample_size=None, gpu_index=0).to_string())
+    set_threshold = 0.1
+    hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
+    hla_mel = hla_mel[hla_mel['Experiment'].apply(
+        lambda x: x.endswith("HLA-II"))]
+    Mels = hla_mel['Experiment'].unique()
+    for which in Mels:
+        # for which in ['Mel15']:
+        print("-------------------------------")
+        print("boosting figure3", which)
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/percolator"
+        print(eval_fdr(None, None, None, save_tab, irt_model=None,
+                       sample_size=None, gpu_index=0).to_string())
     # alleles_rawfile = {}
     # with open("figs/allele_raw.txt") as f:
     #     for l in f:

@@ -294,30 +294,56 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 5
-    set_threshold = 0.1
+    gpu_index = 3
+    set_threshold = 1
     max_epochs = 20
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
+
+    # # ----------------------------------------------------
+    # hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
+    # hla_mel = hla_mel[hla_mel['Experiment'].apply(
+    #     lambda x: x.endswith("HLA-I"))]
+    # Mels = hla_mel['Experiment'].unique()
+    # for which in Mels:
+    #     print("-------------------------------")
+    #     print("boosting figure3", which)
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}"
+    #     if not os.path.exists(save_tab):
+    #         os.mkdir(save_tab)
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/"
+    #     if not os.path.exists(save_tab):
+    #         os.mkdir(save_tab)
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/{which}"
+    #     if not os.path.exists(save_tab):
+    #         os.mkdir(save_tab)
+    #     feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"
+    #     origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
+    #     tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/data.hdf5"
+    #     finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
+    #         run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
+    #     print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
+    #                    irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())
+    # ------------------------------------------
     hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
     hla_mel = hla_mel[hla_mel['Experiment'].apply(
-        lambda x: x.endswith("HLA-I"))]
+        lambda x: x.endswith("HLA-II"))]
     Mels = hla_mel['Experiment'].unique()
     for which in Mels:
         print("-------------------------------")
-        print("boosting figure3", which)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}"
+        print("boosting HLA II", which)
+        # save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}"
+        # if not os.path.exists(save_tab):
+        #     os.mkdir(save_tab)
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/percolator_hdf5_Mels_{set_threshold}/"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/"
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/percolator_hdf5_Mels_{set_threshold}/{which}"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/{which}"
-        if not os.path.exists(save_tab):
-            os.mkdir(save_tab)
-        feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"
-        origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
-        tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/data.hdf5"
+        feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"
+        origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
+        tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/data.hdf5"
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
             run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
         print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,

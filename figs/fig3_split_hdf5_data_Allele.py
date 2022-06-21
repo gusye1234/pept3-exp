@@ -143,31 +143,31 @@ def load_hdf5(hdf5):
 # print(f"Prosit: {len(IAA_PROSIT) + len(noIAA_PROSIT)} - {c_count}")
 
 
-IAA_MAXQUANT = pd.read_csv(IAA_maxquant, sep='\t', low_memory=True)
-noIAA_MAXQUANT = pd.read_csv(noIAA_maxquant, sep='\t', low_memory=True)
+# IAA_MAXQUANT = pd.read_csv(IAA_maxquant, sep='\t', low_memory=True)
+# noIAA_MAXQUANT = pd.read_csv(noIAA_maxquant, sep='\t', low_memory=True)
 
-c_count = 0
-for MEL in tqdm(alleles_rawfile.keys()):
-    SAVE = os.path.join(save_dir, MEL)
-    if not os.path.exists(SAVE):
-        os.mkdir(SAVE)
-    df = None
-    iaa_index = IAA_MAXQUANT['Raw file'].isin(alleles_rawfile[MEL])
-    iaa_target = IAA_MAXQUANT[iaa_index]
-    noiaa_index = noIAA_MAXQUANT['Raw file'].isin(alleles_rawfile[MEL])
-    noiaa_target = noIAA_MAXQUANT[noiaa_index]
-    df = pd.concat([iaa_target, noiaa_target], ignore_index=False)
-    # for raw in alleles_rawfile[MEL]:
-    #     iaa_target = iaa_index_tab.filter(like=raw, axis=0)
+# c_count = 0
+# for MEL in tqdm(alleles_rawfile.keys()):
+#     SAVE = os.path.join(save_dir, MEL)
+#     if not os.path.exists(SAVE):
+#         os.mkdir(SAVE)
+#     df = None
+#     iaa_index = IAA_MAXQUANT['Raw file'].isin(alleles_rawfile[MEL])
+#     iaa_target = IAA_MAXQUANT[iaa_index]
+#     noiaa_index = noIAA_MAXQUANT['Raw file'].isin(alleles_rawfile[MEL])
+#     noiaa_target = noIAA_MAXQUANT[noiaa_index]
+#     df = pd.concat([iaa_target, noiaa_target], ignore_index=False)
+#     # for raw in alleles_rawfile[MEL]:
+#     #     iaa_target = iaa_index_tab.filter(like=raw, axis=0)
 
-    #     noiaa_target = noiaa_index_tab.filter(like=raw, axis=0)
-    #     target = pd.concat([iaa_target, noiaa_target], ignore_index=False)
-    #     if df is None:
-    #         df = target
-    #     else:
-    #         df = pd.concat([df, target], ignore_index=False)
-    # df.reset_index(inplace=True)
-    print(f"{MEL} for {len(df)}")
-    c_count += len(df)
-    df.to_csv(os.path.join(SAVE, 'msms.txt'), sep='\t', index=False)
-print(f"Prosit: {len(IAA_MAXQUANT) + len(noIAA_MAXQUANT)} - {c_count}")
+#     #     noiaa_target = noiaa_index_tab.filter(like=raw, axis=0)
+#     #     target = pd.concat([iaa_target, noiaa_target], ignore_index=False)
+#     #     if df is None:
+#     #         df = target
+#     #     else:
+#     #         df = pd.concat([df, target], ignore_index=False)
+#     # df.reset_index(inplace=True)
+#     print(f"{MEL} for {len(df)}")
+#     c_count += len(df)
+#     df.to_csv(os.path.join(SAVE, 'msms.txt'), sep='\t', index=False)
+# print(f"Prosit: {len(IAA_MAXQUANT) + len(noIAA_MAXQUANT)} - {c_count}")
