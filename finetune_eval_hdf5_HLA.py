@@ -276,7 +276,7 @@ if __name__ == "__main__":
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "prosit_hcd"
+    frag_model = "prosit_l1"
     if frag_model == "prosit_cid":
         run_model = model.PrositFrag()
         run_model.load_state_dict(torch.load(
@@ -295,7 +295,7 @@ if __name__ == "__main__":
 
     sample_size = None
     gpu_index = 3
-    set_threshold = 1
+    set_threshold = 0.1
     max_epochs = 20
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
@@ -311,10 +311,10 @@ if __name__ == "__main__":
     #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}"
     #     if not os.path.exists(save_tab):
     #         os.mkdir(save_tab)
-    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/"
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}/percolator_hdf5_Mels_{set_threshold}/"
     #     if not os.path.exists(save_tab):
     #         os.mkdir(save_tab)
-    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_{set_threshold}/{which}"
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}/percolator_hdf5_Mels_{set_threshold}/{which}"
     #     if not os.path.exists(save_tab):
     #         os.mkdir(save_tab)
     #     feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"
@@ -325,6 +325,7 @@ if __name__ == "__main__":
     #     print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
     #                    irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())
     # ------------------------------------------
+    set_threshold = 0.1
     hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
     hla_mel = hla_mel[hla_mel['Experiment'].apply(
         lambda x: x.endswith("HLA-II"))]
@@ -332,13 +333,13 @@ if __name__ == "__main__":
     for which in Mels:
         print("-------------------------------")
         print("boosting HLA II", which)
-        # save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}"
-        # if not os.path.exists(save_tab):
-        #     os.mkdir(save_tab)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/percolator_hdf5_Mels_{set_threshold}/"
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/percolator_hdf5_Mels_{set_threshold}/{which}"
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}/percolator_hdf5_Mels_{set_threshold}/"
+        if not os.path.exists(save_tab):
+            os.mkdir(save_tab)
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}/percolator_hdf5_Mels_{set_threshold}/{which}"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
         feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"

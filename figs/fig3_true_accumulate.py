@@ -38,7 +38,7 @@ def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Dec
     ax.set_xlim((0, 1))
     # ax.invert_xaxis()
     fig.savefig(
-        f"fig/fig3-cumulative-curve-{frag_model}-{which}_true.pdf", dpi=300, bbox_inches="tight")
+        f"fig/fig3-cumulative-curve-{frag_model}-{which}_true.svg", dpi=300, bbox_inches="tight")
     mpl.rcParams.update(mpl.rcParamsDefault)
 
 
