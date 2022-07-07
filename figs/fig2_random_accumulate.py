@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 
 
-def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Decoy"], which='', frag_model=''):
+def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Decoy"], which='', frag_model='', title=''):
     import matplotlib as mpl
 
     plt.style.use(['ieee', "high-vis", 'no-latex'])
@@ -24,66 +24,23 @@ def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Dec
         t_v, t_base = np.histogram(t_value, bins=1000)
         d_v, d_base = np.histogram(d_value, bins=1000)
 
-        t_cum_sum = np.cumsum(t_v) / len(t_value)
-        d_cum_sum = np.cumsum(d_v) / len(d_value)
+        t_cum_sum = np.cumsum(t_v[::-1])[::-1] / len(t_value)
+        d_cum_sum = np.cumsum(d_v[::-1])[::-1] / len(d_value)
 
-        prefix = "No FT " if i == 0 else "FT "
+        prefix = "Random " if i == 0 else "Fine-tuned Random "
         ax.plot(t_base[:-1], t_cum_sum, label=prefix +
                 names[0], linestyle='-')
         ax.plot(d_base[:-1], d_cum_sum, label=prefix +
                 names[1], linestyle="--")
     ax.set_xlabel("Spectral Angle", fontsize=10)
     ax.set_ylabel('Cumulative Distribution', fontsize=10)
-    ax.legend(loc="lower right")
+    ax.legend(loc="upper left", frameon=False)
+    ax.set_title(title, fontsize=12)
     ax.set_xlim((0, 1))
-    # ax.invert_xaxis()
+    ax.invert_xaxis()
     fig.savefig(
-        f"fig/fig3-cumulative-curve-{frag_model}-{which}.svg", dpi=300, bbox_inches="tight")
+        f"fig/fig2-cumulative-curve-{frag_model}-{which}_random.svg", dpi=300, bbox_inches="tight")
     mpl.rcParams.update(mpl.rcParamsDefault)
-
-# def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Decoy"], which='', frag_model=''):
-#     import matplotlib as mpl
-
-#     plt.style.use(['ieee', "high-vis", 'no-latex'])
-#     plt.rcParams["font.family"] = "DejaVu Sans"
-
-#     fig, axs = plt.subplots(2, figsize=(4, 4))
-#     for i, ax in enumerate(axs):
-#         if i == 0:
-#             t_value = np.abs(targets)
-#             d_value = np.abs(decoys)
-#         else:
-#             t_value = np.abs(targets_f)
-#             d_value = np.abs(decoys_f)
-
-#         t_v, t_base = np.histogram(t_value, bins=1000)
-#         d_v, d_base = np.histogram(d_value, bins=1000)
-
-#         t_cum_sum = np.cumsum(t_v[::-1])[::-1] / len(t_value)
-#         d_cum_sum = np.cumsum(d_v[::-1])[::-1] / len(d_value)
-
-#         ax.set_xlim((0, 1))
-#         ax.invert_xaxis()
-#         print(t_base.shape)
-#         print(d_base.shape)
-#         ax.plot(t_base[:-1], t_cum_sum, label=names[0])
-#         ax.plot(d_base[:-1], d_cum_sum, label=names[1])
-
-#         if i == 0:
-#             ax.legend(loc="upper left")
-#         if i == 1:
-#             ax.set_xlabel("Spectral Angle", fontsize=10)
-#         # ax.set_ylabel("Cumulative Distribution", fontsize=10)
-#         if i == 0:
-#             ax.set_title("No Fine-tuned", fontsize=10)
-#         else:
-#             ax.set_title("Fine-tuned", fontsize=10)
-#     fig.text(-0.02, 0.5, 'Cumulative Distribution',
-#              va='center', rotation='vertical', fontsize=10)
-#     fig.tight_layout()
-#     fig.savefig(
-#         f"fig/fig3-cumulative-curve-{frag_model}-{which}.svg", dpi=300, bbox_inches="tight")
-#     mpl.rcParams.update(mpl.rcParamsDefault)
 
 
 import sys
@@ -96,7 +53,8 @@ import ms
 from ms.dataset import SemiDataset
 from torch.utils.data import DataLoader
 
-for which in ["trypsin", 'chymo', 'lysc', 'gluc']:
+shownames = ["Trypsin", "Chymo", "Lys-C", 'Glu-C']
+for which, show in zip(["trypsin", 'chymo', 'lysc', 'gluc'], shownames):
     print(which)
     msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
     raw_dir = f"/data/prosit/figs/fig235/{which}/raw"
@@ -201,4 +159,4 @@ for which in ["trypsin", 'chymo', 'lysc', 'gluc']:
                      no_f_score_test[test_label == -1],
                      f_score_test[test_label == 1],
                      f_score_test[test_label == -1],
-                     which=which, frag_model=frag_model)
+                     which=which, frag_model=frag_model, title=show)

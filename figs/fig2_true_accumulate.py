@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 
 
-def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Decoy"], which='', frag_model=''):
+def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Decoy"], which='', frag_model='', title=''):
     import matplotlib as mpl
 
     plt.style.use(['ieee', "high-vis", 'no-latex'])
@@ -24,21 +24,22 @@ def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Dec
         t_v, t_base = np.histogram(t_value, bins=1000)
         d_v, d_base = np.histogram(d_value, bins=1000)
 
-        t_cum_sum = np.cumsum(t_v) / len(t_value)
-        d_cum_sum = np.cumsum(d_v) / len(d_value)
+        t_cum_sum = np.cumsum(t_v[::-1])[::-1] / len(t_value)
+        d_cum_sum = np.cumsum(d_v[::-1])[::-1] / len(d_value)
 
-        prefix = "No FT " if i == 0 else "FT "
+        prefix = "" if i == 0 else "Fine-tuned "
         ax.plot(t_base[:-1], t_cum_sum, label=prefix +
                 names[0], linestyle='-')
         ax.plot(d_base[:-1], d_cum_sum, label=prefix +
                 names[1], linestyle="--")
     ax.set_xlabel("Spectral Angle", fontsize=10)
     ax.set_ylabel('Cumulative Distribution', fontsize=10)
-    ax.legend(loc="lower right")
+    ax.set_title(title, fontsize=12)
+    ax.legend(loc="upper left", frameon=False)
     ax.set_xlim((0, 1))
-    # ax.invert_xaxis()
+    ax.invert_xaxis()
     fig.savefig(
-        f"fig/fig3-cumulative-curve-{frag_model}-{which}_true.svg", dpi=300, bbox_inches="tight")
+        f"fig/fig2-cumulative-curve-{frag_model}-{which}_true.svg", dpi=300, bbox_inches="tight")
     mpl.rcParams.update(mpl.rcParamsDefault)
 
 
@@ -53,7 +54,8 @@ from ms.dataset import SemiDataset
 from torch.utils.data import DataLoader
 frag_model = "prosit_l1"
 
-for which in ["trypsin", 'chymo', 'lysc', 'gluc']:
+shownames = ["Trypsin", "Chymo", "Lys-C", 'Glu-C']
+for which, show in zip(["trypsin", 'chymo', 'lysc', 'gluc'], shownames):
     print(which)
     result_dir = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}"
     no_finetuned_dir = os.path.join(result_dir, "no_finetuned_twofold")
@@ -69,4 +71,4 @@ for which in ["trypsin", 'chymo', 'lysc', 'gluc']:
                                       == 1]['spectral_angle'],
                      finetune_sa_feat[finetune_sa_feat['Label']
                                       == -1]['spectral_angle'],
-                     which=which, frag_model=frag_model)
+                     which=which, frag_model=frag_model, title=show)

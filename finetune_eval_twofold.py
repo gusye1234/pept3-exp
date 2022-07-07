@@ -126,7 +126,7 @@ if __name__ == "__main__":
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "prosit_l1"
+    frag_model = "pdeep2"
     if frag_model == "prosit_cid":
         run_model = model.PrositFrag()
         run_model.load_state_dict(torch.load(
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 2
+    gpu_index = 0
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
     analysis_dict = {}
