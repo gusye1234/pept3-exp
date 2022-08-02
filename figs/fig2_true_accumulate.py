@@ -10,6 +10,7 @@ def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Dec
 
     plt.style.use(['ieee', "high-vis", 'no-latex'])
     plt.rcParams["font.family"] = "DejaVu Sans"
+    plt.rcParams['svg.fonttype'] = 'none'
 
     fig, ax = plt.subplots(figsize=(4, 4), dpi=100)
     target_c = ['blue', 'green']
