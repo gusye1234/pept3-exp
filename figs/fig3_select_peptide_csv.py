@@ -136,6 +136,27 @@ for contain_name in all_alleles_names:
             to_dir = f"{no_tab_dir}/ft_nonft"
             if not os.path.exists(to_dir):
                 os.mkdir(to_dir)
+            
+            pep_more = (f_p_petides - nof_p_peptides)
+            with open(save_file, "w") as f:
+                pep_more = [p for p in pep_more if (
+                    len(p) >= 8 and len(p) <= 11)]
+                all_pep_add = sorted(list(pep_more))
+                f.write("\n".join(all_pep_add))
+            len_peptide = defaultdict(list)
+            for p in pep_more:
+                len_peptide[len(p)].append(p)
+            save_file = os.path.join(to_dir, f"len-add-{contain_name}.txt")
+            with open(save_file, "w") as f:
+                all_len = sorted(len_peptide.keys())
+                for l in all_len:
+                    line = " ".join([str(l)] + len_peptide[l])
+                    f.write(line + "\n")
+            save_file = os.path.join(to_dir, f"{contain_name}.txt")
+            with open(save_file, "w") as f:
+                all_pep_add = sorted(list(pep_add))
+                f.write("\n".join(all_pep_add))
+                
             save_file = os.path.join(to_dir, f"sub-{contain_name}.txt")
             pep_sub = (nof_p_peptides - f_p_petides)
             with open(save_file, "w") as f:
