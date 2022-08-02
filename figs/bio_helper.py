@@ -24,11 +24,13 @@ def peptide_parser(p):
             yield p[i]
             i += 1
 
+
 def peptide_to_inter(seq, max_length=30):
     re = np.zeros((max_length, ), dtype='int')
     for i, s in enumerate(peptide_parser(seq)):
         re[i] = constants.ALPHABET[s]
     return re.reshape(1, -1)
+
 
 def one_hot(flag, max_cate=6):
     re = np.zeros((max_cate, ))
@@ -71,6 +73,7 @@ def get_annotation(forward, backward, charge, ion_types, offset=0):
         all_.update(d)
     return collections.OrderedDict(sorted(all_.items(), key=lambda t: t[0]))
 
+
 def reverse_annotation(matches, intensities, charges, length):
     import re
     tmp = re.compile(r"(y|x|a|b)(\d+)$")
@@ -79,7 +82,7 @@ def reverse_annotation(matches, intensities, charges, length):
     tmp_higher_nl = re.compile(r"(y|x|a|b)(\d+)-(NH3|H2O)\((\d+)\+\)$")
     result = np.zeros((29, 2, 3))
     ion_dict = {
-        'y':0, 'b':1
+        'y': 0, 'b': 1
     }
     for m, inten in zip(matches, intensities):
         if re.match(tmp_nl, m) or re.match(tmp_higher_nl, m):
@@ -99,10 +102,11 @@ def reverse_annotation(matches, intensities, charges, length):
             raise TypeError(f"{m} can't be parsed")
         if ion not in ion_dict or charge > 3:
             continue
-        result[frag_i-1, ion_dict[ion], charge-1] = float(inten)
+        result[frag_i - 1, ion_dict[ion], charge - 1] = float(inten)
     result[:, :, charges:] = -1
-    result[length-1:] = -1
+    result[length - 1:] = -1
     return result
+
 
 def read_attribute(row, attribute):
     if " " not in str(row[attribute]):
@@ -183,7 +187,7 @@ def pair_backbone_with_mass(pred_inten, peptide, charge):
     intens = []
     masses = []
     annos = []
-    for c_index in range(max(charge, 3)):
+    for c_index in range(min(charge, 3)):
         annotations = get_annotation(
             forward_sum, backward_sum, c_index + 1, "by"
         )
@@ -193,9 +197,11 @@ def pair_backbone_with_mass(pred_inten, peptide, charge):
                 annos.append(anno)
                 ion = match.group(1)
                 frag_i = int(match.group(2))
-                intens.append(pred_inten[frag_i-1, ion_dict[ion], c_index])
+                # print(frag_i - 1, ion_dict[ion], c_index)
+                intens.append(pred_inten[frag_i - 1, ion_dict[ion], c_index])
                 masses.append(mass_t)
     return intens, masses
+
 
 def match(row, ion_types, max_charge=constants.DEFAULT_MAX_CHARGE):
     masses_observed = read_attribute(row, "masses_raw")
@@ -245,7 +251,8 @@ def match_all(row, ion_types='yb', max_charge=constants.DEFAULT_MAX_CHARGE):
         else:
             match_ions = [tmp.format(i, str(charge)) for i in ions['matches']]
             all_ions.extend(match_ions)
-    return all_ions, all_intensities, all_charge, peptides_leng, len(all_intensities)/(total_peaks + 1e-9), all_masses, scale_inten
+    return all_ions, all_intensities, all_charge, peptides_leng, len(all_intensities) / (total_peaks + 1e-9), all_masses, scale_inten
+
 
 def match_all_multi(row, ion_types='yb', max_charge=constants.DEFAULT_MAX_CHARGE):
     matches = match(row, ion_types, max_charge)
@@ -266,7 +273,8 @@ def match_all_multi(row, ion_types='yb', max_charge=constants.DEFAULT_MAX_CHARGE
         else:
             match_ions = [tmp.format(i, str(charge)) for i in ions['matches']]
             all_ions.extend(match_ions)
-    return row['id'],all_ions, all_intensities, all_charge, peptides_leng, len(all_intensities)/(total_peaks + 1e-9), all_masses, scale_inten
+    return row['id'], all_ions, all_intensities, all_charge, peptides_leng, len(all_intensities) / (total_peaks + 1e-9), all_masses, scale_inten
+
 
 def c_lambda(matches, charge, attr):
     def mapping(i):
