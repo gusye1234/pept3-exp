@@ -306,6 +306,9 @@ if __name__ == "__main__":
         feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/percolator/features.csv"
         origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/percolator/prosit.tab"
         tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/data.hdf5"
+        model_saving_path = f"./checkpoints/finetuned/{which}"
+        if not os.path.exists(model_saving_path):
+            os.mkdir(model_saving_path)
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
             run_model, tabels_file, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
         # torch.save(finetune_model1.state_dict(),
@@ -321,28 +324,3 @@ if __name__ == "__main__":
         #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth", map_location='cpu'))
         print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
                        irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())
-
-    # for which in ['noIAA', "IAA"]:
-    #     print("-------------------------------")
-    #     print("boosting figure3", which)
-    #     save_tab = f"/data1/yejb/prosit/figure3/percolator/{frag_model}_finetune_{which}_{set_threshold}"
-    #     if not os.path.exists(save_tab):
-    #         os.mkdir(save_tab)
-    #     feature_csv = f"/data1/yejb/prosit/figure3/forPRIDE/{which}/percolator/features.csv"
-    #     origin_prosit_tab = f"/data1/yejb/prosit/figure3/forPRIDE/{which}/percolator/prosit.tab"
-    #     tabels_file = f"/data1/yejb/prosit/figure3/forPRIDE/{which}/data.hdf5"
-    #     finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-    #         run_model, tabels_file, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
-    #     # torch.save(finetune_model1.state_dict(),
-    #     #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_first_{which}.pth")
-    #     # torch.save(finetune_model2.state_dict(),
-    #     #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth")
-
-    #     # finetune_model1 = deepcopy(run_model)
-    #     # finetune_model1.load_state_dict(torch.load(
-    #     #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_first_{which}.pth", map_location='cpu'))
-    #     # finetune_model2 = deepcopy(run_model)
-    #     # finetune_model2.load_state_dict(torch.load(
-    #     #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth", map_location='cpu'))
-    #     print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
-    #                    irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())

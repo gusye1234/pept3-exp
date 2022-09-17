@@ -139,11 +139,11 @@ class SemiDataset:
                 "collision_energy_aligned_normed": np.array(_feat['collision_energy_aligned_normed']).squeeze()
             })
             self._frag_msms = np.array(_feat['intensities_raw'])
-            order = np.arange(len(self._frag_msms))
-            np.random.shuffle(order)
-            self._data = self._data.reindex(order)
-            self._frag_msms = self._frag_msms[order]
             print(f"Total {len(self._frag_msms)} data loader from hdf5")
+        order = np.arange(len(self._frag_msms))
+        np.random.shuffle(order)
+        self._data = self._data.reindex(order)
+        self._frag_msms = self._frag_msms[order]
         self._d, self._df, self._test_d, self._test_df = self.split_dataset()
         self.assign_train_score(self._d[score_init])
         self.assign_test_score(self._test_d[score_init])
@@ -160,6 +160,7 @@ class SemiDataset:
         print(f"[Dataset reverse]: {len(self._d)} -> {len(self._test_d)}")
         self._d, self._test_d = self._test_d, self._d
         self._df, self._test_df = self._test_df, self._df
+        self._scores, self._test_scores = self._test_scores, self._scores
         return self
 
     def backbone_spectrums(self):
@@ -330,6 +331,333 @@ class SemiDataset:
         q_values = self.q_compute(self._scores, self._d, self._pi)
         sat_d = self._d[q_values <= threshold]
         sat_f = self._df[q_values <= threshold]
+        names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+        return FinetuneTableDataset(names, data_sa)
+
+    def semisupervised_sa_finetune_noneg(self, threshold=0.1):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        target_q_values = q_values[self._d['Label'] == 1]
+        sat_d = self._d[self._d['Label'] == 1][target_q_values <= threshold]
+        sat_f = self._df[self._d['Label'] == 1][target_q_values <= threshold]
+        print(len(sat_d))
+        names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+        return FinetuneTableDataset(names, data_sa)
+
+    def semisupervised_sa_finetune_double_stanard(self, target_thres=0.01, decoy_thres=0.1):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        target_q_values = q_values[self._d['Label'] == 1]
+        decoy_q_values = q_values[self._d['Label'] == -1]
+        sat_d_target = self._d[self._d['Label']
+                               == 1][target_q_values <= target_thres]
+        sat_d_decoy = self._d[self._d['Label']
+                              == -1][decoy_q_values <= decoy_thres]
+        sat_f_target = self._df[self._d['Label']
+                                == 1][target_q_values <= target_thres]
+        sat_f_decoy = self._df[self._d['Label']
+                               == -1][decoy_q_values <= decoy_thres]
+
+        sat_d = pd.concat([sat_d_target, sat_d_decoy], ignore_index=True)
+        sat_f = np.concatenate([sat_f_target, sat_f_decoy], axis=0)
+        print(
+            f"Target {len(sat_d[sat_d['Label'] == 1])}, Decoy {len(sat_d[sat_d['Label'] == -1])}")
+        names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+        return FinetuneTableDataset(names, data_sa)
+
+    def semisupervised_sa_finetune_allDecoy(self, threshold=0.1):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        target_q_values = q_values[self._d['Label'] == 1]
+        sat_d_target = self._d[self._d['Label']
+                               == 1][target_q_values <= threshold]
+        sat_d_target = sat_d_target.reset_index(drop=True)
+        sat_d_decoy = self._d[self._d['Label'] == -1]
+        sat_d_decoy = sat_d_decoy.reset_index(drop=True)
+
+        sat_f_target = self._df[self._d['Label']
+                                == 1][target_q_values <= threshold]
+        sat_f_decoy = self._df[self._d['Label'] == -1]
+
+        top_decoy_order = np.argsort(
+            q_values[self._d['Label'] == -1])[:len(sat_f_target)]
+        sat_d_decoy = sat_d_decoy.loc[list(top_decoy_order)]
+        sat_f_decoy = sat_f_decoy[top_decoy_order]
+
+        sat_d = pd.concat([sat_d_target, sat_d_decoy], ignore_index=True)
+        sat_f = np.concatenate([sat_f_target, sat_f_decoy], axis=0)
+        print(f"Target {len(sat_d_target)}, Decoy {len(sat_d_decoy)}")
+        names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+        return FinetuneTableDataset(names, data_sa)
+
+    def semisupervised_RT_finetune(self, threshold=0.1):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        sat_d = self._d[q_values <= threshold]
+        names, data_sa = self.prepare_rt_data(sat_d)
+        return FinetuneTableDataset(names, data_sa)
+
+    def semisupervised_finetune(self, threshold=0.1):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        sat_d = self._d[q_values <= threshold]
+        sat_f = self._df[q_values <= threshold]
+        names, data = self.prepare_data(sat_d, sat_f)
+        return FinetuneTableDataset(names, data)
+
+    def semisupervised_pair_sa_finetune(self, threshold=0.1):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        sat_d = self._d[q_values <= threshold]
+        sat_f = self._df[q_values <= threshold]
+
+        pos_d = sat_d[sat_d['Label'] == 1]
+        pos_df = sat_f[sat_d['Label'] == 1]
+
+        neg_d = self._d[self._d['Label'] == -1]
+        neg_df = self._df[self._d['Label'] == -1]
+
+        names, pos_data_sa = self.prepare_sa_data(pos_d, pos_df)
+        names, neg_data_sa = self.prepare_sa_data(neg_d, neg_df)
+
+        return PairFinetuneTableDataset(names, pos_data_sa, neg_data_sa)
+
+    def supervised_sa_finetune(self):
+        names, data_sa = self.prepare_sa_data(self._d, self._df)
+        return FinetuneTableDataset(names, data_sa)
+
+    def train_all_data(self):
+        return self.supervised_sa_finetune()
+
+    def test_all_data(self):
+        names, data_sa = self.prepare_sa_data(self._test_d, self._test_df)
+        return FinetuneTableDataset(names, data_sa)
+
+
+class SemiDataset_twofold:
+    def __init__(self, table_input, score_init="andromeda", pi=0.9, rawfile_fiels=None):
+        self._file_input = table_input
+        self._pi = pi
+        if not table_input.endswith("hdf5"):
+            self._hdf5 = False
+            self._data = pd.read_csv(table_input, sep='\t').sample(
+                frac=1, random_state=2022).reset_index(drop=True)
+            self._frag_msms = self.backbone_spectrums()
+        else:
+            self._hdf5 = True
+            if rawfile_fiels is None:
+                _feat = h5py.File(table_input, 'r')
+            else:
+                pass
+            # Peptide, Charge, collision_energy_aligned_normed, Label,
+            _label = np.array(_feat['reverse']).astype("int")
+            _label[_label == 1] = -1
+            _label[_label == 0] = 1
+            self._data = pd.DataFrame({
+                "Peptide_integer": list(np.array(_feat['sequence_integer'])),
+                "Charge_onehot": list(np.array(_feat['precursor_charge_onehot'])),
+                "Label": _label.squeeze(),
+                "andromeda": np.array(_feat['score']).squeeze(),
+                "collision_energy_aligned_normed": np.array(_feat['collision_energy_aligned_normed']).squeeze()
+            })
+            self._frag_msms = np.array(_feat['intensities_raw'])
+            print(f"Total {len(self._frag_msms)} data loader from hdf5")
+        order = np.arange(len(self._frag_msms))
+        np.random.shuffle(order)
+        self._data = self._data.reindex(order)
+        self._frag_msms = self._frag_msms[order]
+        self._d, self._df, self._test_d, self._test_df = self.split_dataset()
+        self.assign_train_score(self._d[score_init])
+        self.assign_test_score(self._test_d[score_init])
+
+    def shuffle(self):
+        # total_ids = np.array(self._data['SpecId'])
+        # random_order = np.random.shuffle(np.arange(len(total_ids)))
+        # self._random_id_matches = {
+        #     i: j for i, j in zip(total_ids, total_ids[random_order])
+        # }
+        pass
+
+    def reverse(self):
+        print(f"[Dataset reverse]: {len(self._d)} -> {len(self._test_d)}")
+        self._d, self._test_d = self._test_d, self._d
+        self._df, self._test_df = self._test_df, self._df
+        self._scores, self._test_scores = self._test_scores, self._scores
+        return self
+
+    def backbone_spectrums(self):
+        sp = self._data.apply(
+            lambda x: reverse_annotation(
+                x['peak_ions'], x['peak_inten'], x['Charge'], x['sequence_length']).reshape(1, -1),
+            axis=1
+        )
+        return np.concatenate(sp, axis=0)
+
+    def num_of_scalars_feat(self):
+        pass
+
+    def assign_train_score(self, scores):
+        assert len(scores) == len(self._d)
+        self._scores = np.array(scores)
+
+    def assign_test_score(self, scores):
+        assert len(scores) == (len(self._test_d))
+        self._test_scores = np.array(scores)
+
+    def split_dataset(self):
+        targets = self._data[self._data['Label'] == 1]
+        targets_frag = self._frag_msms[self._data['Label'] == 1]
+        decoys = self._data[self._data['Label'] == -1]
+        decoys_frag = self._frag_msms[self._data['Label'] == -1]
+        # print(f"Total {len(targets)} targets, {len(decoys)} decoys from {self._file_input}")
+
+        train_data = targets[:len(targets) //
+                             2].append(decoys[:len(decoys) // 2])
+        train_frag = np.concatenate(
+            (targets_frag[:len(targets) // 2], decoys_frag[:len(decoys) // 2]), axis=0)
+        test_data = targets[len(targets) //
+                            2:].append(decoys[len(decoys) // 2:])
+        test_decoy_frag = np.concatenate(
+            (targets_frag[len(targets) // 2:], decoys_frag[len(decoys) // 2:]), axis=0)
+        # print(f"    {len(train_data)} PSMs will be used for training")
+        return train_data, train_frag, test_data, test_decoy_frag
+
+    def id2remove(self):
+        if not self._hdf5:
+            return np.array(self._d['SpecId'])
+        else:
+            return np.array(self._d.index)
+
+    def q_compute(self, scores, table, pi):
+        ratio = (table['Label'] == 1).sum() / (table['Label'] == -1).sum()
+        ratio = pi * ratio
+        indexs = np.arange(len(scores))
+        labels = np.array(table['Label'])
+        orders = np.argsort(scores)
+
+        indexs = indexs[orders]
+        labels = labels[orders]
+
+        target_sum = np.flip(np.cumsum(np.flip(labels == 1)))
+        decoy_sum = np.flip(np.cumsum(np.flip(labels == -1)))
+
+        target_sum[:-1] = target_sum[1:]
+        decoy_sum[:-1] = decoy_sum[1:]
+
+        fdrs = ratio * decoy_sum / (target_sum + 1e-9)
+        fdrs[-1] = 0
+        q_values = np.zeros_like(fdrs)
+        min_fdrs = np.inf
+        for i, fdr in enumerate(fdrs):
+            min_fdrs = min(min_fdrs, fdr)
+            q_values[i] = min_fdrs
+
+        remap = np.argsort(indexs)
+        q_values = q_values[remap]
+        return q_values
+
+    def Q_values(self):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        return q_values
+
+    def Q_values_test(self):
+        q_values = self.q_compute(self._test_scores, self._test_d, self._pi)
+        return q_values
+
+    def prepare_sa_data(self, table, frag_msms):
+        xlabel = ["sequence_integer",
+                  "precursor_charge_onehot",
+                  "collision_energy_aligned_normed"]
+        ylabel = "intensities_raw"
+        names = xlabel + [ylabel, "label"]
+
+        y_data = torch.from_numpy(frag_msms)
+        if not self._hdf5:
+            seq_data = list(table.apply(
+                lambda x: peptide_to_inter(x['Peptide']), axis=1))
+            seq_data = torch.from_numpy(np.concatenate(seq_data))
+        else:
+            seq_data = [i.reshape(1, -1)
+                        for i in table['Peptide_integer'].to_list()]
+            seq_data = torch.from_numpy(
+                np.concatenate(seq_data))
+
+        if not self._hdf5:
+            charges = list(table.apply(
+                lambda x: one_hot(x['Charge'] - 1), axis=1))
+            charges = torch.from_numpy(np.concatenate(charges))
+        else:
+            charges = [i.reshape(1, -1)
+                       for i in table['Charge_onehot'].to_list()]
+            charges = torch.from_numpy(np.concatenate(charges))
+
+        nces = np.array(table['collision_energy_aligned_normed'])
+        nces = torch.from_numpy(nces).unsqueeze(1)
+
+        labels = np.array(table['Label'])
+        labels = torch.from_numpy(labels)
+
+        data_sa = [seq_data, charges, nces, y_data, labels]
+        return names, data_sa
+
+    def prepare_rt_data(self, table):
+        if self._hdf5:
+            raise NotImplementedError(
+                "h5df data is not supported for RT finetuned")
+        names = ['sequence_integer', "irt", "label"]
+
+        seq_data = list(table.apply(
+            lambda x: peptide_to_inter(x['Peptide']), axis=1))
+        seq_data = torch.from_numpy(np.concatenate(seq_data))
+
+        rt = np.array(table['retention_time'])
+        self._rt_mean, self._rt_std = np.mean(rt), np.std(rt)
+        rt = (rt - self._rt_mean) / self._rt_std
+        rt = torch.from_numpy(rt)
+
+        labels = np.array(table['Label'])
+        labels = torch.from_numpy(labels)
+
+        data_rt = [seq_data, rt, labels]
+        return names, data_rt
+
+    def prepare_data(self, table, frag_msms):
+        if self._hdf5:
+            raise NotImplementedError(
+                "h5df data is not supported for RT finetuned")
+        xlabel = ["sequence_integer",
+                  "precursor_charge_onehot",
+                  "collision_energy_aligned_normed"]
+        names = xlabel + ["intensities_raw", "irt", "label"]
+
+        y_data = torch.from_numpy(frag_msms)
+        seq_data = list(table.apply(
+            lambda x: peptide_to_inter(x['Peptide']), axis=1))
+        seq_data = torch.from_numpy(np.concatenate(seq_data))
+
+        charges = list(table.apply(lambda x: one_hot(x['Charge'] - 1), axis=1))
+        charges = torch.from_numpy(np.concatenate(charges))
+
+        nces = np.array(table['collision_energy_aligned_normed'])
+        nces = torch.from_numpy(nces).unsqueeze(1)
+
+        rt = np.array(table['retention_time'])
+        self._rt_mean, self._rt_std = np.mean(rt), np.std(rt)
+        rt = (rt - self._rt_mean) / self._rt_std
+        rt = torch.from_numpy(rt).unsqueeze(1)
+
+        labels = np.array(table['Label'])
+        labels = torch.from_numpy(labels)
+        data = [seq_data, charges, nces, y_data, rt, labels]
+        return names, data
+
+    def semisupervised_sa_finetune(self, threshold=0.1):
+        q_values = self.q_compute(self._scores, self._d, self._pi)
+        sat_d = self._d[q_values <= threshold]
+        sat_f = self._df[q_values <= threshold]
+        names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+        return FinetuneTableDataset(names, data_sa)
+
+    def semisupervised_sa_finetune_rank(self, threshold=0.1):
+        rank_score = np.sort(self._scores)[
+            ::-1][int(len(self._scores) * threshold)]
+        print("Pick", rank_score, self._scores.max(), self._scores.min())
+        sat_d = self._d[self._scores <= rank_score]
+        sat_f = self._df[self._scores <= rank_score]
         names, data_sa = self.prepare_sa_data(sat_d, sat_f)
         return FinetuneTableDataset(names, data_sa)
 

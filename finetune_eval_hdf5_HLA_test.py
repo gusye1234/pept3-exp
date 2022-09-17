@@ -59,22 +59,36 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
         label[label == 1] = -1
         label[label == 0] = 1
         total_index = np.arange(len(label))
-        target_index = total_index[label == 1]
-        decoy1_index = np.array(id2remove)
-        decoy1_index = decoy1_index[decoy1_index < sample_size]
+        # target_index = total_index[label == 1]
+        # decoy1_index = np.array(id2remove)
+        # decoy1_index = decoy1_index[decoy1_index < sample_size]
+        # decoy2_index = np.array([i for i in total_index if (
+        #     label[i] == -1 and i not in decoy1_index)])
+
+        part1_ids = np.array(id2remove)
+        target1_index = np.array([i for i in total_index if (
+            label[i] == 1 and i in part1_ids)])
+        decoy1_index = np.array([i for i in total_index if (
+            label[i] == -1 and i in part1_ids)])
+        target2_index = np.array([i for i in total_index if (
+            label[i] == 1 and i not in part1_ids)])
         decoy2_index = np.array([i for i in total_index if (
-            label[i] == -1 and i not in decoy1_index)])
+            label[i] == -1 and i not in part1_ids)])
+
         print(
-            f"Comb: {len(target_index)}, {len(decoy1_index)}, {len(decoy2_index)}")
+            f"Comb: {len(target1_index)}, {len(target2_index)}, {len(decoy1_index)}, {len(decoy2_index)}")
         # --------------------------------------------
-        t_sa_1, t_sa_t_1 = get_sa_from_array(
-            run_model1, seq_data[target_index], nces[target_index],
-            charges[target_index], frag_msms[target_index], gpu_index=gpu_index)
         t_sa_2, t_sa_t_2 = get_sa_from_array(
-            run_model2, seq_data[target_index], nces[target_index],
-            charges[target_index], frag_msms[target_index], gpu_index=gpu_index)
-        t_sa = ((t_sa_1 + t_sa_2) / 2).cpu().numpy()
-        t_sa_t = ((t_sa_t_1 + t_sa_t_2) / 2).cpu().numpy()
+            run_model1, seq_data[target2_index], nces[target2_index],
+            charges[target2_index], frag_msms[target2_index], gpu_index=gpu_index)
+        t_sa_1, t_sa_t_1 = get_sa_from_array(
+            run_model2, seq_data[target1_index], nces[target1_index],
+            charges[target1_index], frag_msms[target1_index], gpu_index=gpu_index)
+        t1_sa = t_sa_1.cpu().numpy()
+        t1_sa_t = t_sa_t_1.cpu().numpy()
+
+        t2_sa = t_sa_2.cpu().numpy()
+        t2_sa_t = t_sa_t_2.cpu().numpy()
         # --------------------------------------------
         d2_sa, d2_sa_t = get_sa_from_array(
             run_model1, seq_data[decoy2_index], nces[decoy2_index],
@@ -87,20 +101,20 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
         d1_sa = d1_sa.cpu().numpy()
         d1_sa_t = d1_sa_t.cpu().numpy()
         # --------------------------------------------
-        sas = np.concatenate([t_sa, d1_sa, d2_sa], axis=0)
-        sas_tensors = np.concatenate([t_sa_t, d1_sa_t, d2_sa_t], axis=0)
+        sas = np.concatenate([t1_sa, t2_sa, d1_sa, d2_sa], axis=0)
+        sas_tensors = np.concatenate(
+            [t1_sa_t, t2_sa_t, d1_sa_t, d2_sa_t], axis=0)
         orders = np.concatenate(
-            [target_index, decoy1_index, decoy2_index], axis=0)
+            [target1_index, target2_index, decoy1_index, decoy2_index], axis=0)
         orders = np.argsort(orders)
         sas = sas[orders]
         sas_tensors = sas_tensors[orders]
 
         feature_table = pd.read_csv(feature_csv, nrows=sample_size)
         assert (len(scan_number) == len(feature_table))
-        assert all([True if p[0].decode() == p[1] else False for p in zip(
-            rawfiles, np.array(feature_table['raw_file']))])
-        assert (scan_number == np.array(
-            feature_table['scan_number'])).all()
+        assert all(
+            [True if p[0].decode() == p[1] else False for p in zip(rawfiles, np.array(feature_table['raw_file']))])
+        assert (scan_number == np.array(feature_table['scan_number'])).all()
         Rawfile = feature_table['raw_file'].to_list()
         Charges = np.array(feature_table['precursor_charge'])
         Features = {}
@@ -296,37 +310,63 @@ if __name__ == "__main__":
 
     sample_size = None
     gpu_index = 2
-    set_threshold = 0.1
-    max_epochs = 20
+    set_threshold = 0.01
+    max_epochs = 30
     print("Running twofold", frag_model)
     if_pearson = (frag_model in ['pdeep2'])
-    alleles_rawfile = {}
-    with open("figs/data/allele_raw.txt") as f:
-        for l in f:
-            pack = l.strip().split("\t")
-            alleles_rawfile[pack[0]] = set(pack[1:])
-    Alleles = sorted(alleles_rawfile.keys())
-    for which in Alleles:
+
+    # ----------------------------------------------------
+    hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
+    hla_mel = hla_mel[hla_mel['Experiment'].apply(
+        lambda x: x.endswith("HLA-I"))]
+    Mels = hla_mel['Experiment'].unique()
+    for which in Mels:
         print("-------------------------------")
         print("boosting figure3", which)
-        save_tab = f"/data1/yejb/prosit/figure3/percolator_hdf5_allele_{set_threshold}_{frag_model}/"
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        save_tab = f"/data1/yejb/prosit/figure3/percolator_hdf5_allele_{set_threshold}_{frag_model}/{which}"
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}/test-percolator_hdf5_Mels_{set_threshold}/"
         if not os.path.exists(save_tab):
             os.mkdir(save_tab)
-        model_saving = "./checkpoints/finetuned/Alleles"
-        if not os.path.exists(model_saving):
-            os.mkdir(model_saving)
-        model_saving = os.path.join(model_saving, which)
-        if not os.path.exists(model_saving):
-            os.mkdir(model_saving)
-        feature_csv = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/features.csv"
-        origin_prosit_tab = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/prosit.tab"
-        tabels_file = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/data.hdf5"
-        finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
+        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}/test-percolator_hdf5_Mels_{set_threshold}/{which}"
+        if not os.path.exists(save_tab):
+            os.mkdir(save_tab)
+        save_tab2 = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/{frag_model}/test-percolator_hdf5_Mels_{set_threshold}/{which}_ori"
+        if not os.path.exists(save_tab2):
+            os.mkdir(save_tab2)
+        feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"
+        origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
+        tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/data.hdf5"
+        finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold_test(
             run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
-        torch.save([finetune_model1.state_dict(), finetune_model2.state_dict()],
-                   os.path.join(model_saving, f"{frag_model}.pth"))
+        print(eval_fdr(run_model, run_model, tabels_file, feature_csv, origin_prosit_tab, save_tab2,
+                       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())
         print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
                        irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())
+
+    # # ------------------------------------------
+    # set_threshold = 0.1
+    # hla_mel = pd.read_csv("./figs/data/HLA_Mel.csv")
+    # hla_mel = hla_mel[hla_mel['Experiment'].apply(
+    #     lambda x: x.endswith("HLA-II"))]
+    # Mels = hla_mel['Experiment'].unique()
+    # for which in Mels:
+    #     print("-------------------------------")
+    #     print("boosting HLA II", which)
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}"
+    #     if not os.path.exists(save_tab):
+    #         os.mkdir(save_tab)
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}/percolator_hdf5_Mels_{set_threshold}/"
+    #     if not os.path.exists(save_tab):
+    #         os.mkdir(save_tab)
+    #     save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/{frag_model}/percolator_hdf5_Mels_{set_threshold}/{which}"
+    #     if not os.path.exists(save_tab):
+    #         os.mkdir(save_tab)
+    #     feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/percolator/features.csv"
+    #     origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
+    #     tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_2/forPride/rescoring_for_paper_2/Mels/{which}/data.hdf5"
+    #     finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
+    #         run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
+    #     print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
+    #                    irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())

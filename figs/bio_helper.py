@@ -9,6 +9,7 @@ import collections
 
 def peptide_parser(p):
     p = p.replace("_", "")
+    p = p.replace(".", "")
     if p[0] == "(":
         print(p)
         raise ValueError("sequence starts with '('")
@@ -28,7 +29,7 @@ def peptide_parser(p):
 def peptide_to_inter(seq, max_length=30):
     re = np.zeros((max_length, ), dtype='int')
     for i, s in enumerate(peptide_parser(seq)):
-        re[i] = constants.ALPHABET[s]
+        re[i] = constants.ALPHABET[s.upper()]
     return re.reshape(1, -1)
 
 

@@ -30,7 +30,7 @@ def fixed_features(msms_file, raw_dir, save_tab, over_write=False):
     name, msms_data = read_msms(
         msms_file)
     msms_data = filter_msms(name, msms_data)
-    save2 = os.path.splitext(msms_file)[0]+"_peaks.txt"
+    save2 = os.path.splitext(msms_file)[0] + "_peaks.txt"
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
     if not os.path.exists(save2):
@@ -112,12 +112,12 @@ def fixed_features(msms_file, raw_dir, save_tab, over_write=False):
 
     def add_deltaM_da(pack):
         Features['deltaM_da'] = [
-            p/1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            p / 1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_absDeltaM_da(pack):
         Features['absDeltaM_da'] = [
-            abs(p/1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            abs(p / 1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_andromeda(pack):
@@ -183,10 +183,10 @@ def fixed_features_random(msms_file, raw_dir, save_tab, over_write=False):
     name, msms_data = read_msms(
         msms_file)
     msms_data = filter_msms(name, msms_data)
-    save2 = os.path.splitext(msms_file)[0]+"_random_peaks.txt"
+    save2 = os.path.splitext(msms_file)[0] + "_random_peaks.txt"
     m_r = loc_msms_in_raw(msms_data, raw_dir)
     m_r = sorted(m_r, key=lambda x: int(x[0][name.index("id")]))
-    
+
     print(save2, os.path.exists(save2))
     if not os.path.exists(save2):
         print("Ions generating[random version]")
@@ -293,12 +293,12 @@ def fixed_features_random(msms_file, raw_dir, save_tab, over_write=False):
 
     def add_deltaM_da(pack):
         Features['deltaM_da'] = [
-            p/1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            p / 1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_absDeltaM_da(pack):
         Features['absDeltaM_da'] = [
-            abs(p/1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            abs(p / 1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_andromeda(pack):
@@ -359,9 +359,9 @@ def fixed_features_random(msms_file, raw_dir, save_tab, over_write=False):
 def one_pack_all(msms_file, raw_dir, model, sample_size=None, irt_model=None, id2remove=None, pearson=False, decoyid2keep=None):
 
     name = read_name(msms_file)
-    ions_save = os.path.splitext(msms_file)[0]+"_ions.txt"
+    ions_save = os.path.splitext(msms_file)[0] + "_ions.txt"
     if sample_size is not None:
-        ions_save = os.path.splitext(msms_file)[0]+f"_{sample_size}_ions.txt"
+        ions_save = os.path.splitext(msms_file)[0] + f"_{sample_size}_ions.txt"
     if not os.path.exists(ions_save):
         print("Computing matched ions from scratch", ions_save)
         save_m_r_ions(msms_file, raw_dir, sample_size=sample_size)
@@ -493,15 +493,16 @@ def one_pack_random(msms_file, raw_dir, model, sample_size=None, irt_model=None,
 def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, irt_model=None, id2remove=None, pearson=False):
 
     name = read_name(msms_file)
-    ions_save = os.path.splitext(msms_file)[0]+"_ions.txt"
+    ions_save = os.path.splitext(msms_file)[0] + "_ions.txt"
     if sample_size is not None:
-        ions_save = os.path.splitext(msms_file)[0]+f"_{sample_size}_ions.txt"
+        ions_save = os.path.splitext(msms_file)[0] + f"_{sample_size}_ions.txt"
     if not os.path.exists(ions_save):
         print("Computing matched ions from scratch", ions_save)
         save_m_r_ions(msms_file, raw_dir, sample_size=sample_size)
     m_r, m_i_delta, m_i = read_m_r_ions(ions_save)
     print(f"Before Len: {len(m_r)}")
-    target_index = [i for i in range(len(m_r)) if len(m_r[i][0][name.index('Reverse')]) == 0]
+    target_index = [i for i in range(len(m_r)) if len(
+        m_r[i][0][name.index('Reverse')]) == 0]
     decoy_1_index = [i for i in range(
         len(m_r)) if int(m_r[i][0][name.index('id')]) in id2remove]
     decoy_2_index = [i for i in range(
@@ -522,7 +523,7 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
             model1, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta2, _ = get_sa_all(
             model2, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
-        sas_delta_target = ((sas_delta1 + sas_delta2)/2).cpu().numpy()
+        sas_delta_target = ((sas_delta1 + sas_delta2) / 2).cpu().numpy()
         # --------------------------------------------
         frag_msms_delta = [bio_helper.reverse_annotation(
             *i[:4]) for i in [m_i_delta[i] for i in decoy_1_index]]
@@ -539,23 +540,24 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
         sas_delta_decoy2, _ = get_sa_all(
             model1, data_nce_cand_delta, frag_msms_delta, pearson=pearson)
         sas_delta_decoy2 = sas_delta_decoy2.cpu().numpy()
-        
+
         # --------------------------------------------
-        frag_msms_target = [bio_helper.reverse_annotation(*i[:4]) for i in [m_i[i] for i in target_index]]
+        frag_msms_target = [bio_helper.reverse_annotation(
+            *i[:4]) for i in [m_i[i] for i in target_index]]
         data_nce_cand = generate_from_msms(msms_data_target, name, nces=33)
 
         sas1, sa_tensors1 = get_sa_all(
             model1, data_nce_cand, frag_msms_target, pearson=pearson)
         sas2, sa_tensors2 = get_sa_all(
             model1, data_nce_cand, frag_msms_target, pearson=pearson)
-        sas_target = ((sas1 + sas2)/2).cpu().numpy()
-        sa_tensors_target = ((sa_tensors1 + sa_tensors2)/2).cpu().numpy()
+        sas_target = ((sas1 + sas2) / 2).cpu().numpy()
+        sa_tensors_target = ((sa_tensors1 + sa_tensors2) / 2).cpu().numpy()
         # --------------------------------------------
         frag_msms_decoy1 = [bio_helper.reverse_annotation(
             *i[:4]) for i in [m_i[i] for i in decoy_1_index]]
         data_nce_cand = generate_from_msms(
             msms_data_decoy1, name, nces=33)
-        sas_decoy1,sa_tensors_decoy1 = get_sa_all(
+        sas_decoy1, sa_tensors_decoy1 = get_sa_all(
             model2, data_nce_cand, frag_msms_decoy1, pearson=pearson)
         sas_decoy1 = sas_decoy1.cpu().numpy()
         sa_tensors_decoy1 = sa_tensors_decoy1.cpu().numpy()
@@ -576,9 +578,12 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
 
         m_r = [m_r[i] for i in reorder_index]
         sas = np.concatenate([sas_target, sas_decoy1, sas_decoy2], axis=0)
-        sa_tensors = np.concatenate([sa_tensors_target, sa_tensors_decoy1, sa_tensors_decoy2], axis=0)
-        sas_delta = np.concatenate([sas_delta_target, sas_delta_decoy1, sas_delta_decoy2], axis=0)
-        frag_msms = np.concatenate([frag_msms_target, frag_msms_decoy1, frag_msms_decoy2], axis=0)
+        sa_tensors = np.concatenate(
+            [sa_tensors_target, sa_tensors_decoy1, sa_tensors_decoy2], axis=0)
+        sas_delta = np.concatenate(
+            [sas_delta_target, sas_delta_decoy1, sas_delta_decoy2], axis=0)
+        frag_msms = np.concatenate(
+            [frag_msms_target, frag_msms_decoy1, frag_msms_decoy2], axis=0)
         frag_msms = [i.reshape(-1) for i in frag_msms]
 
         if irt_model is not None:
@@ -592,7 +597,6 @@ def one_pack_all_twofold(msms_file, raw_dir, model1, model2, sample_size=None, i
                     frag in zip(m_r, sas, sa_tensors, sas_delta, frag_msms)]
         print(f"Assemle Len: {len(pack)}")
         return pack, name
-
 
 
 def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_model=None, need_all=False, id2remove=None, totest=None, pearson=False):
@@ -672,12 +676,12 @@ def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_mo
 
     def add_deltaM_da(pack):
         Features['deltaM_da'] = [
-            p/1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            p / 1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_absDeltaM_da(pack):
         Features['absDeltaM_da'] = [
-            abs(p/1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            abs(p / 1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_sa(pack):
@@ -758,70 +762,70 @@ def fdr_test(run_model, msms_file, raw_dir, save_tab, sample_size=300000, irt_mo
         Features['raw_nonZero_b'] = [np.sum(b(m[5]) > 0) for m in pack]
         Features['raw_nonZero_y'] = [np.sum(y(m[5]) > 0) for m in pack]
 
-        theoretically = Features['sequence_length']*2 * \
+        theoretically = Features['sequence_length'] * 2 * \
             np.array([int(m[0][i_d['Charge']]) for m in pack]) + 1e-9
         Features['rel_not_pred_seen'] = np.array(
-            Features['not_pred_seen'])/theoretically
+            Features['not_pred_seen']) / theoretically
         Features['rel_not_pred_seen_b'] = np.array(
-            Features['not_pred_seen_b'])/theoretically*2
+            Features['not_pred_seen_b']) / theoretically * 2
         Features['rel_not_pred_seen_y'] = np.array(
-            Features['not_pred_seen_y'])/theoretically*2
+            Features['not_pred_seen_y']) / theoretically * 2
         Features['rel_pred_nonZero_b'] = np.array(
-            Features['pred_nonZero_b'])/theoretically*2
+            Features['pred_nonZero_b']) / theoretically * 2
         Features['rel_pred_nonZero_y'] = np.array(
-            Features['pred_nonZero_y'])/theoretically*2
+            Features['pred_nonZero_y']) / theoretically * 2
         Features['rel_pred_not_seen'] = np.array(
-            Features['pred_not_seen'])/theoretically
+            Features['pred_not_seen']) / theoretically
         Features['rel_pred_not_seen_b'] = np.array(
-            Features['pred_not_seen_b'])/theoretically*2
+            Features['pred_not_seen_b']) / theoretically * 2
         Features['rel_pred_not_seen_y'] = np.array(
-            Features['pred_not_seen_y'])/theoretically*2
+            Features['pred_not_seen_y']) / theoretically * 2
         Features['rel_pred_seen_nonzero'] = np.array(
-            Features['pred_seen_nonzero'])/theoretically
+            Features['pred_seen_nonzero']) / theoretically
         Features['rel_pred_seen_nonzero_b'] = np.array(
-            Features['pred_seen_nonzero_b'])/theoretically*2
+            Features['pred_seen_nonzero_b']) / theoretically * 2
         Features['rel_pred_seen_nonzero_y'] = np.array(
-            Features['pred_seen_nonzero_y'])/theoretically*2
+            Features['pred_seen_nonzero_y']) / theoretically * 2
         Features['rel_pred_seen_zero'] = np.array(
-            Features['pred_seen_zero'])/theoretically
+            Features['pred_seen_zero']) / theoretically
         Features['rel_pred_seen_zero_b'] = np.array(
-            Features['pred_seen_zero_b'])/theoretically*2
+            Features['pred_seen_zero_b']) / theoretically * 2
         Features['rel_pred_seen_zero_y'] = np.array(
-            Features['pred_seen_zero_y'])/theoretically*2
+            Features['pred_seen_zero_y']) / theoretically * 2
         Features['rel_raw_nonZero_fragments'] = np.array(
-            Features['raw_nonZero_fragments'])/theoretically
+            Features['raw_nonZero_fragments']) / theoretically
         Features['rel_raw_nonZero_b'] = np.array(
-            Features['raw_nonZero_b'])/theoretically*2
+            Features['raw_nonZero_b']) / theoretically * 2
         Features['rel_raw_nonZero_y'] = np.array(
-            Features['raw_nonZero_y'])/theoretically*2
+            Features['raw_nonZero_y']) / theoretically * 2
 
         Features['relpred_not_pred_seen2pred_nonZero_fragments'] = np.array(
-            Features['not_pred_seen'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['not_pred_seen']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
         Features['relpred_not_pred_seen_b2pred_nonZero_b'] = np.array(
-            Features['not_pred_seen_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['not_pred_seen_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_not_pred_seen_y2pred_nonZero_y'] = np.array(
-            Features['not_pred_seen_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['not_pred_seen_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
         Features['relpred_pred_not_seen_b2pred_nonZero_b'] = np.array(
-            Features['pred_not_seen_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['pred_not_seen_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_pred_not_seen_y2pred_nonZero_y'] = np.array(
-            Features['pred_not_seen_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['pred_not_seen_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
 
         Features['relpred_pred_not_seen2pred_nonZero_fragments'] = np.array(
-            Features['pred_not_seen'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['pred_not_seen']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
         Features['relpred_pred_seen_nonzero_b2pred_nonZero_b'] = np.array(
-            Features['pred_seen_nonzero_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['pred_seen_nonzero_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_pred_seen_nonzero_y2pred_nonZero_y'] = np.array(
-            Features['pred_seen_nonzero_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['pred_seen_nonzero_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
 
         Features['relpred_pred_seen_nonzero2pred_nonZero_fragments'] = np.array(
-            Features['pred_seen_nonzero'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['pred_seen_nonzero']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
         Features['relpred_pred_seen_zero_b2pred_nonZero_b'] = np.array(
-            Features['pred_seen_zero_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['pred_seen_zero_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_pred_seen_zero_y2pred_nonZero_y'] = np.array(
-            Features['pred_seen_zero_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['pred_seen_zero_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
 
         Features['relpred_pred_seen_zero2pred_nonZero_fragments'] = np.array(
-            Features['pred_seen_zero'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['pred_seen_zero']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
 
     # %%
     add_id(pack)
@@ -1013,12 +1017,12 @@ def fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab, sampl
 
     def add_deltaM_da(pack):
         Features['deltaM_da'] = [
-            p/1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            p / 1e6 * m for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_absDeltaM_da(pack):
         Features['absDeltaM_da'] = [
-            abs(p/1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
+            abs(p / 1e6 * m) for m, p in zip(Features['Mass'], Features['deltaM_ppm'])
         ]
 
     def add_sa(pack):
@@ -1099,70 +1103,70 @@ def fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab, sampl
         Features['raw_nonZero_b'] = [np.sum(b(m[5]) > 0) for m in pack]
         Features['raw_nonZero_y'] = [np.sum(y(m[5]) > 0) for m in pack]
 
-        theoretically = Features['sequence_length']*2 * \
+        theoretically = Features['sequence_length'] * 2 * \
             np.array([int(m[0][i_d['Charge']]) for m in pack]) + 1e-9
         Features['rel_not_pred_seen'] = np.array(
-            Features['not_pred_seen'])/theoretically
+            Features['not_pred_seen']) / theoretically
         Features['rel_not_pred_seen_b'] = np.array(
-            Features['not_pred_seen_b'])/theoretically*2
+            Features['not_pred_seen_b']) / theoretically * 2
         Features['rel_not_pred_seen_y'] = np.array(
-            Features['not_pred_seen_y'])/theoretically*2
+            Features['not_pred_seen_y']) / theoretically * 2
         Features['rel_pred_nonZero_b'] = np.array(
-            Features['pred_nonZero_b'])/theoretically*2
+            Features['pred_nonZero_b']) / theoretically * 2
         Features['rel_pred_nonZero_y'] = np.array(
-            Features['pred_nonZero_y'])/theoretically*2
+            Features['pred_nonZero_y']) / theoretically * 2
         Features['rel_pred_not_seen'] = np.array(
-            Features['pred_not_seen'])/theoretically
+            Features['pred_not_seen']) / theoretically
         Features['rel_pred_not_seen_b'] = np.array(
-            Features['pred_not_seen_b'])/theoretically*2
+            Features['pred_not_seen_b']) / theoretically * 2
         Features['rel_pred_not_seen_y'] = np.array(
-            Features['pred_not_seen_y'])/theoretically*2
+            Features['pred_not_seen_y']) / theoretically * 2
         Features['rel_pred_seen_nonzero'] = np.array(
-            Features['pred_seen_nonzero'])/theoretically
+            Features['pred_seen_nonzero']) / theoretically
         Features['rel_pred_seen_nonzero_b'] = np.array(
-            Features['pred_seen_nonzero_b'])/theoretically*2
+            Features['pred_seen_nonzero_b']) / theoretically * 2
         Features['rel_pred_seen_nonzero_y'] = np.array(
-            Features['pred_seen_nonzero_y'])/theoretically*2
+            Features['pred_seen_nonzero_y']) / theoretically * 2
         Features['rel_pred_seen_zero'] = np.array(
-            Features['pred_seen_zero'])/theoretically
+            Features['pred_seen_zero']) / theoretically
         Features['rel_pred_seen_zero_b'] = np.array(
-            Features['pred_seen_zero_b'])/theoretically*2
+            Features['pred_seen_zero_b']) / theoretically * 2
         Features['rel_pred_seen_zero_y'] = np.array(
-            Features['pred_seen_zero_y'])/theoretically*2
+            Features['pred_seen_zero_y']) / theoretically * 2
         Features['rel_raw_nonZero_fragments'] = np.array(
-            Features['raw_nonZero_fragments'])/theoretically
+            Features['raw_nonZero_fragments']) / theoretically
         Features['rel_raw_nonZero_b'] = np.array(
-            Features['raw_nonZero_b'])/theoretically*2
+            Features['raw_nonZero_b']) / theoretically * 2
         Features['rel_raw_nonZero_y'] = np.array(
-            Features['raw_nonZero_y'])/theoretically*2
+            Features['raw_nonZero_y']) / theoretically * 2
 
         Features['relpred_not_pred_seen2pred_nonZero_fragments'] = np.array(
-            Features['not_pred_seen'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['not_pred_seen']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
         Features['relpred_not_pred_seen_b2pred_nonZero_b'] = np.array(
-            Features['not_pred_seen_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['not_pred_seen_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_not_pred_seen_y2pred_nonZero_y'] = np.array(
-            Features['not_pred_seen_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['not_pred_seen_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
         Features['relpred_pred_not_seen_b2pred_nonZero_b'] = np.array(
-            Features['pred_not_seen_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['pred_not_seen_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_pred_not_seen_y2pred_nonZero_y'] = np.array(
-            Features['pred_not_seen_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['pred_not_seen_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
 
         Features['relpred_pred_not_seen2pred_nonZero_fragments'] = np.array(
-            Features['pred_not_seen'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['pred_not_seen']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
         Features['relpred_pred_seen_nonzero_b2pred_nonZero_b'] = np.array(
-            Features['pred_seen_nonzero_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['pred_seen_nonzero_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_pred_seen_nonzero_y2pred_nonZero_y'] = np.array(
-            Features['pred_seen_nonzero_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['pred_seen_nonzero_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
 
         Features['relpred_pred_seen_nonzero2pred_nonZero_fragments'] = np.array(
-            Features['pred_seen_nonzero'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['pred_seen_nonzero']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
         Features['relpred_pred_seen_zero_b2pred_nonZero_b'] = np.array(
-            Features['pred_seen_zero_b'])/(np.array(Features['pred_nonZero_b']) + 1e-9)
+            Features['pred_seen_zero_b']) / (np.array(Features['pred_nonZero_b']) + 1e-9)
         Features['relpred_pred_seen_zero_y2pred_nonZero_y'] = np.array(
-            Features['pred_seen_zero_y'])/(np.array(Features['pred_nonZero_y']) + 1e-9)
+            Features['pred_seen_zero_y']) / (np.array(Features['pred_nonZero_y']) + 1e-9)
 
         Features['relpred_pred_seen_zero2pred_nonZero_fragments'] = np.array(
-            Features['pred_seen_zero'])/(np.array(Features['pred_nonZero_fragments']) + 1e-9)
+            Features['pred_seen_zero']) / (np.array(Features['pred_nonZero_fragments']) + 1e-9)
 
     # %%
     add_id(pack)

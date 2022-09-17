@@ -114,12 +114,18 @@ class FinetuneSALossNoneg(nn.Module):
         self.l1_lambda = l1_lambda
         self.if_pearson = pearson
 
+    def filter_negs(self, true, pred, label):
+        index = (label > 0)
+        return true[index], pred[index], label[index]
+
     def forward(self, true, pred, label):
+        true, pred, label = self.filter_negs(true, pred, label)
         true_mask = (true >= 0).float()
         pred = pred * true_mask
         l1_v = torch.abs(pred).sum(1).mean()
         if not self.if_pearson:
-            base = spectral_distance(true, pred)
+            sas = spectral_angle(true, pred)
+            base = torch.mean((sas - label)**2)
         else:
             pears = pearson_coff(true, pred)
             base = torch.mean((pears - label)**2)
@@ -195,6 +201,7 @@ def mask_outofcharge(array, charges, mask=-1.0):
 def predict_sa(true, pred, data):
     # pred[pred < 0] = 0
     pred = pred / pred.max()
+    true = true / true.max()
     B = pred.shape[0]
     lengths = torch.count_nonzero(data['sequence_integer'], dim=1)
     charges = torch.argmax(data["precursor_charge_onehot"], dim=1) + 1
