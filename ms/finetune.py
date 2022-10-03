@@ -287,7 +287,6 @@ def semisupervised_finetune_twofold(ori_model, input_table, batch_size=1024, gpu
                                 data['intensities_raw'], pred)
                         scores.append(sas.detach().cpu().numpy())
                     scores = np.concatenate(scores, axis=0)
-                    print(scores.shape)
                     dataset.assign_train_score(scores)
                     q_values = dataset.Q_values()
                     q_values_num = np.sum(q_values < validate_q_threshold)

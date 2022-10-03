@@ -37,7 +37,7 @@ def read_mel(pep_dirs, melname, threshold=0.01, add_dir=None):
 ft_mels_table = None
 
 prosit_mels_peptides = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/"
-ft_mels_peptides = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_0.1"
+ft_mels_peptides = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/prosit_hcd/percolator_hdf5_Mels_0.1"
 
 for melname in MELS:
     print(melname)
@@ -169,7 +169,7 @@ def mark_mut_pep(pep, pep_dict):
         re_pep = f"**{pep}"
     else:
         raise NotFoundErr("wrong matching")
-    return re_pep, core_type.split("|")[5]
+    return loc, core_pep, re_pep, core_type.split("|")[5]
 
 
 prosit_peptide_file = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/rescoring_for_paper_2/percolator/prosit_target.peptides"
@@ -197,18 +197,18 @@ for allele in alleles2see:
 
 prosit_mutation_table = {}
 for p in prosit_mut_dict.keys():
-    neo_pep, mut_type = mark_mut_pep(p, prosit_mut_dict)
+    pro_loc, pro, neo_pep, mut_type = mark_mut_pep(p, prosit_mut_dict)
     prosit_mutation_table[p] = [
-        len(p), prosit_peps_score_dict[p], neo_pep, mut_type]
+        pro, pro_loc, len(p), prosit_peps_score_dict[p], neo_pep, mut_type]
     for allele in alleles2see:
         prosit_mutation_table[p].append(
             netmhcpan_dfs[allele].get(p, None))
 
 ft_mutation_table = {}
 for p in ft_mut_dict.keys():
-    neo_pep, mut_type = mark_mut_pep(p, ft_mut_dict)
+    pro_loc, pro, neo_pep, mut_type = mark_mut_pep(p, ft_mut_dict)
     ft_mutation_table[p] = [
-        len(p), prosit_peps_score_dict[p], ft_peps_score_dict[p], neo_pep, mut_type]
+        pro, pro_loc, len(p), prosit_peps_score_dict[p], ft_peps_score_dict[p], neo_pep, mut_type]
     for allele in alleles2see:
         ft_mutation_table[p].append(
             netmhcpan_dfs[allele].get(p, None))
@@ -216,11 +216,11 @@ for p in ft_mut_dict.keys():
 
 def form_mut_df(mutation_table, ft=False):
     if not ft:
-        core_cols = ["Experiments", "Sequence", "Length",
+        core_cols = ["Experiments", "Sequence", "Protein", "Location", "Length",
                      "Prosit peptide Q-value", "Neo-Epitope", "Mutation Type"] + \
             [f"NetMHCpan prediction \n{allele}\n(score;%rank;binding_level)" for allele in alleles2see]
     else:
-        core_cols = ["Experiments", "Sequence", "Length",
+        core_cols = ["Experiments", "Sequence", "Protein", "Location", "Length",
                      "Prosit peptide Q-value", "Finetuned Prosit peptide Q-value", "Neo-Epitope", "Mutation Type"] + \
             [f"NetMHCpan prediction \n{allele}\n(score;%rank;binding_level)" for allele in alleles2see]
     core_data = []
