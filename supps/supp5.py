@@ -169,7 +169,18 @@ def mark_mut_pep(pep, pep_dict):
         re_pep = f"**{pep}"
     else:
         raise NotFoundErr("wrong matching")
-    return loc, core_pep, re_pep, core_type.split("|")[5]
+    loc_range = (start + 1, start + 1 + len(pep))
+    return loc, core_pep, re_pep, core_type, loc_range
+
+
+def extract_info(mut_type):
+    packs = mut_type.split("|")
+    gene_name = packs[4]
+    transcript = packs[7]
+    mut = packs[5]
+    # alter = packs[9].split(".")[1]
+    alter = packs[9]
+    return gene_name, transcript, mut, alter
 
 
 prosit_peptide_file = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/rescoring_for_paper_2/percolator/prosit_target.peptides"
@@ -197,18 +208,21 @@ for allele in alleles2see:
 
 prosit_mutation_table = {}
 for p in prosit_mut_dict.keys():
-    pro_loc, pro, neo_pep, mut_type = mark_mut_pep(p, prosit_mut_dict)
+    pro_loc, pro, neo_pep, mut_type, loc_range = mark_mut_pep(
+        p, prosit_mut_dict)
+    gene, trans, mut_t, alter = extract_info(mut_type)
     prosit_mutation_table[p] = [
-        pro, pro_loc, len(p), prosit_peps_score_dict[p], neo_pep, mut_type]
+        pro, f"({loc_range[0]}-{loc_range[1]})", neo_pep, gene, trans, mut_t, alter, prosit_peps_score_dict[p]]
     for allele in alleles2see:
         prosit_mutation_table[p].append(
             netmhcpan_dfs[allele].get(p, None))
 
 ft_mutation_table = {}
 for p in ft_mut_dict.keys():
-    pro_loc, pro, neo_pep, mut_type = mark_mut_pep(p, ft_mut_dict)
+    pro_loc, pro, neo_pep, mut_type, loc_range = mark_mut_pep(p, ft_mut_dict)
+    gene, trans, mut_t, alter = extract_info(mut_type)
     ft_mutation_table[p] = [
-        pro, pro_loc, len(p), prosit_peps_score_dict[p], ft_peps_score_dict[p], neo_pep, mut_type]
+        pro, f"({loc_range[0]}-{loc_range[1]})", neo_pep, gene, trans, mut_t, alter, prosit_peps_score_dict[p], ft_peps_score_dict[p]]
     for allele in alleles2see:
         ft_mutation_table[p].append(
             netmhcpan_dfs[allele].get(p, None))
@@ -216,12 +230,12 @@ for p in ft_mut_dict.keys():
 
 def form_mut_df(mutation_table, ft=False):
     if not ft:
-        core_cols = ["Experiments", "Sequence", "Protein", "Location", "Length",
-                     "Prosit peptide Q-value", "Neo-Epitope", "Mutation Type"] + \
+        core_cols = ["Experiments", "Sequence", "Protein", "Position",
+                     "Neo-Epitope", "Gene name", "Transcript ID", "Mutation Type", "Amino-acid change", "Prosit peptide Q-value"] + \
             [f"NetMHCpan prediction \n{allele}\n(score;%rank;binding_level)" for allele in alleles2see]
     else:
-        core_cols = ["Experiments", "Sequence", "Protein", "Location", "Length",
-                     "Prosit peptide Q-value", "Finetuned Prosit peptide Q-value", "Neo-Epitope", "Mutation Type"] + \
+        core_cols = ["Experiments", "Sequence", "Protein", "Position",
+                     "Neo-Epitope", "Gene name", "Transcript ID", "Mutation Type", "Amino-acid change", "Prosit peptide Q-value", "Finetuned Prosit peptide Q-value"] + \
             [f"NetMHCpan prediction \n{allele}\n(score;%rank;binding_level)" for allele in alleles2see]
     core_data = []
     for k, v in mutation_table.items():
@@ -234,8 +248,34 @@ def form_mut_df(mutation_table, ft=False):
     return pd.DataFrame(columns=core_cols, data=core_data)
 
 
+def only_binders_form_mut_df(mutation_table, ft=False):
+    if not ft:
+        core_cols = ["Experiments", "Position",
+                     "Neo-Epitope", "Gene name", "Transcript ID", "Mutation Type", "Amino-acid change", "Prosit peptide Q-value"] + \
+            [f"NetMHCpan prediction \n{allele}\n(score;%rank;binding_level)" for allele in alleles2see]
+    else:
+        core_cols = ["Experiments", "Position",
+                     "Neo-Epitope", "Gene name", "Transcript ID", "Mutation Type", "Amino-acid change", "Prosit peptide Q-value", "Finetuned Prosit peptide Q-value"] + \
+            [f"NetMHCpan prediction \n{allele}\n(score;%rank;binding_level)" for allele in alleles2see]
+    core_data = []
+    for k, v in mutation_table.items():
+        if all([p is None for p in v[-4:]]):
+            continue
+        core_data.append([
+            "Mel-15_HLA-I",
+            *v[1:-4],
+            *[f"{p[0]};{p[1]};{p[2]}" if p is not None else '' for p in v[-4:]],
+        ])
+    return pd.DataFrame(columns=core_cols, data=core_data)
+
+
 prosit_mut_df = form_mut_df(prosit_mutation_table)
 ft_mut_df = form_mut_df(ft_mutation_table, ft=True)
+
+prosit_only_binders = only_binders_form_mut_df(prosit_mutation_table)
+prosit_only_binders.to_csv("data/mel15_prosit.csv", index=False)
+ft_only_binders = only_binders_form_mut_df(ft_mutation_table, ft=True)
+ft_only_binders.to_csv("data/mel15_ft.csv", index=False)
 
 writer = pd.ExcelWriter("data/supp5.xlsx", engine='openpyxl')
 # dfs = {
