@@ -103,7 +103,7 @@ def plot_half_violin(data_dict: dict, names=['No fine-tuned', 'Fine-tuned']):
         b.set_edgecolor('lightgray')
         # b.set_edgewidth(2)
     plot2 = ax.violinplot(finetuned, showmeans=False,
-                          showextrema=False, showmedians=False)
+                          showextrema=False, showmedians=True)
     for b in plot2['bodies']:
         # get the center
         m = np.mean(b.get_paths()[0].vertices[:, 0])
@@ -255,8 +255,8 @@ if not os.path.exists("figs/fig2_sa_violin"):
     os.mkdir("figs/fig2_sa_violin")
 RAW = False
 if RAW:
-    for which in Mels:
-        # for which in ['Mel-28_HLA-I']:
+    # for which in Mels:
+    for which in ['Mel-15_HLA-I']:
         print("-------------------------------")
         f_model_path = os.path.join('../checkpoints/finetuned/HLA-I', which)
         print("load from", f_model_path)
@@ -319,7 +319,8 @@ if RAW:
             f"figs/fig2_sa_violin/{frag_model}-{which_part_str}-{which}-raw.svg", dpi=300)
         plt.close()
 else:
-    for which in Mels:
+    # for which in Mels:
+    for which in ['Mel-15_HLA-I']:
         # for which in ['Mel-28_HLA-I']:
         print("-------------------------------")
         f_model_path = os.path.join('../checkpoints/finetuned/HLA-I', which)
