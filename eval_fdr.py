@@ -7,8 +7,8 @@ sys.path.append("./figs")
 import torch
 import os
 from fdr_test import fdr_test, fixed_features
-from ms import model
-from ms import finetune
+from pept3 import model
+from pept3 import finetune
 
 
 def eval_fdr(run_model, msms_file, raw_dir, save_tab, fdr_threshold=0.1, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, irt_model=None, gpu_index=0):

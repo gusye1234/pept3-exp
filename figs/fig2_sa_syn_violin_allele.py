@@ -12,7 +12,7 @@ from tools import *
 from fdr_test import fixed_features
 import sys
 sys.path.append("..")
-from ms import model
+from pept3 import model
 plt.rcParams['svg.fonttype'] = 'none'
 
 

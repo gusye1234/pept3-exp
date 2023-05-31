@@ -49,9 +49,9 @@ sys.path.append("..")
 from tools import *
 import tools
 from fdr_test import fixed_features_random
-from ms import model, finetune
-import ms
-from ms.dataset import SemiDataset
+from pept3 import model, finetune
+import pept3
+from pept3.dataset import SemiDataset
 from torch.utils.data import DataLoader
 
 shownames = ["Trypsin", "Chymo", "Lys-C", 'Glu-C']

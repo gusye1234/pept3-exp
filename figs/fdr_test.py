@@ -11,12 +11,12 @@ import math
 import pandas as pd
 import enum
 from collections import defaultdict, OrderedDict
-import ms
+import pept3
 import matplotlib.pyplot as plt
 import tools
 from tools import *
 from random import choices
-from ms import model
+from pept3 import model
 from sklearn.preprocessing import scale
 import sys
 sys.path.append("..")

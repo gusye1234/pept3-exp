@@ -2,11 +2,11 @@ import os
 import argparse
 import torch
 import json
-from ms import helper
+from pept3 import helper
 import sys
-from ms.model import TransPro, PrositFrag
+from pept3.model import TransPro, PrositFrag
 from tqdm import tqdm
-from ms.dataset import FragDataset, IrtDataset
+from pept3.dataset import FragDataset, IrtDataset
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 

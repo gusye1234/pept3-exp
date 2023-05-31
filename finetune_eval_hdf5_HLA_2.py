@@ -5,9 +5,9 @@ import pandas as pd
 import torch
 import os
 from time import time
-from ms import helper
-from ms import model
-from ms import finetune
+from pept3 import helper
+from pept3 import model
+from pept3 import finetune
 import h5py
 from tqdm import tqdm
 import numpy as np

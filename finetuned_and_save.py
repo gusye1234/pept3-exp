@@ -1,7 +1,7 @@
 import torch
 import sys
 sys.path.append("figs/")
-from ms import finetune
+from pept3 import finetune
 from fdr_test import fixed_features
 
 
@@ -13,8 +13,8 @@ fixed_features_dir = f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit
 tabels_file = fixed_features(
     msms_file, raw_dir, fixed_features_dir)
 
-from ms import model
-import ms
+from pept3 import model
+import pept3
 
 frag_model = "prosit_l1"
 model_list = {

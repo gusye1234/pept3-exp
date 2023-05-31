@@ -2,14 +2,13 @@ import os
 import argparse
 import torch
 import json
-from ms import helper
+from pept3 import helper
 import sys
-from ms.model import TransPro, PrositFrag, TransProBest
+from pept3.model import TransProBest, PrositFrag, pDeep2_nomod
 from tqdm import tqdm
-from ms.dataset import FragDataset, IrtDataset
+from pept3.dataset import FragDataset, IrtDataset
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from eval_fdr import eval_fdr
 
 
 def parse_args():
@@ -18,14 +17,12 @@ def parse_args():
     parser.add_argument("--layer", type=int, default=3)
     parser.add_argument("--fraglayer", type=int, default=1)
     parser.add_argument("--dim", type=int, default=128)
-    parser.add_argument("--batch", type=int, default=512)
+    parser.add_argument("--batch", type=int, default=1024)
     parser.add_argument("--innerdim", type=int, default=256)
     parser.add_argument("--test", type=int, default=0)
-    parser.add_argument("--testbatch", type=int, default=512)
+    parser.add_argument("--testbatch", type=int, default=1024)
     parser.add_argument("--load", type=int, default=0)
     parser.add_argument("--debug", type=int, default=0)
-    parser.add_argument("--tempature", type=float, default=0.1)
-    parser.add_argument("--lambdaa", type=float, default=0.)
     args = parser.parse_args()
     return args
 
@@ -73,38 +70,31 @@ else:
     device = torch.device("cpu")
 print("Run on", device)
 
-# model = TransPro(layer_num=args.layer, peptide_embed_dim=args.dim,
-#                  inner_dim=args.innerdim, frag_layer_num=args.fraglayer).to(device)
-# model = PrositFrag().to(device)
-model = TransProBest().to(device)
-
+# model = TransProBest().to(device)
+model = PrositFrag().to(device)
+# model = pDeep2_nomod().to(device)
 print(model.comment())
 optimizer = torch.optim.AdamW(
     model.parameters(), lr=0.001, eps=1e-8)
-loss_fn = helper.InfoNCE(
-    temp=args.tempature, on_spectral=False, lambdaa=args.lambdaa)
+
+base_loss_fn = helper.spectral_distance
+loss_fn = helper.L1Loss(loss_fn=base_loss_fn, lambdaa=0.00001)
 
 interval = 100
+choice = 'irt'
 best_loss = torch.inf
 stopper = helper.EarlyStop(pat=20)
 writer = SummaryWriter(f"./logs/frag/{model.comment()}-{args.batch}")
 writer.start = False
 
-which = "chymo"
-save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try"
-msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
-raw_dir = f"/data/prosit/figs/fig235/{which}/raw"
-
-save_name = f"./checkpoints/frag/nce/best_nce_frag_{model.comment()}-{args.batch}-{args.tempature}-{args.lambdaa}.pth"
+save_name = f"./checkpoints/frag/best_frag_l1_{model.comment()}-{args.batch}.pth"
 if os.path.exists(save_name) and args.load > 0:
     model.load_state_dict(torch.load(save_name, map_location=device))
     print("Load from", save_name)
-print(f"Save to {save_name}")
-
 for epoch in range(TRAIN_EPOCHS):
     loss = 0.
-    loss_nces = 0.
-    loss_sas = 0.
+    loss_l1 = 0.
+    loss_sa = 0.
     train_count = 0
     model = model.train()
     print(f"Epoch [{epoch+1:3d}/{TRAIN_EPOCHS}]")
@@ -112,44 +102,34 @@ for epoch in range(TRAIN_EPOCHS):
         train_count += 1
         data = {k: v.to(device) for k, v in data.items()}
         data["peptide_mask"] = helper.create_mask(data['sequence_integer'])
-        # if not writer.start:
-        #     writer.add_graph(model, data)
-        #     writer.start = True
-
         pred = model(data)
-        loss_b, loss_nce, loss_sa = loss_fn(data['intensities_raw'], pred)
+        loss_b, sa_loss, l1_loss = loss_fn(data['intensities_raw'], pred)
         optimizer.zero_grad()
         loss_b.backward()
         optimizer.step()
-        loss += loss_b.item()
-        loss_nces += loss_nce
-        loss_sas += loss_sa
-        print(
-            f"\r    -Train Loss ({loss/train_count:.3f}, {loss_nces/train_count:.3f}, {loss_sas/train_count:.3f})", end="")
+        print(f"\r    -Train Loss {loss/train_count:.3f}, {loss_l1/train_count:.3f}, {loss_sa/train_count:.3f}", end="")
         sys.stdout.flush()
+        loss += loss_b.item()
+        loss_l1 += l1_loss
+        loss_sa += sa_loss
+    print(
+        f"\r    -Train Loss {loss/train_count:.3f}, {loss_l1/train_count:.3f}, {loss_sa/train_count:.3f}", end="")
     loss /= train_count
 
     with torch.no_grad():
         loss_test = 0
-        loss_nces = 0.
-        loss_sas = 0.
         test_count = 0
         model = model.eval()
-
-        target_identified = eval_fdr(model, msms_file, raw_dir, save_tab)
-        print(f" -identified target: {target_identified}", end='\t')
         for i, data in enumerate(valid_loader):
             test_count += 1
+
             data = {k: v.to(device) for k, v in data.items()}
             data["peptide_mask"] = helper.create_mask(data['sequence_integer'])
             pred = model(data, choice='frag')
-            loss_b, loss_nce, loss_sa = loss_fn(data['intensities_raw'], pred)
+            loss_b, sa_loss, l1_loss = loss_fn(data['intensities_raw'], pred)
             loss_test += loss_b.item()
-            loss_nces += loss_nce
-            loss_sas += loss_sa
-            
-        print(
-            f"   -Valid Loss ({loss_test/test_count:.3f}, {loss_nces/test_count:.3f}, {loss_sas/test_count:.3f})", end="")
+        loss_test /= test_count
+        print(f"    -Valiad Loss: {loss_test:.5f}")
         writer.add_scalars('loss', {'train': loss, 'test': loss_test}, epoch)
         if loss_test < best_loss:
             print("     -achieve best, saved")
@@ -173,7 +153,7 @@ with torch.no_grad():
         data["peptide_mask"] = helper.create_mask(data['sequence_integer'])
 
         pred = model(data, choice='frag')
-        loss_b, loss_nce, loss_sa = loss_fn(data['intensities_raw'], pred)
+        loss_b, sa_loss, l1_loss = loss_fn(data['intensities_raw'], pred)
         loss_test += loss_b.item()
     loss_test /= test_count
-    print(f"----Test SA Loss: {loss_test:.5f}----")
+    print(f"----Test Loss: {loss_test:.5f}----")

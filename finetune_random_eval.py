@@ -1,7 +1,7 @@
 import sys
-from ms import finetune
-from ms import model
-from ms import helper
+from pept3 import finetune
+from pept3 import model
+from pept3 import helper
 from time import time
 import os
 import torch
