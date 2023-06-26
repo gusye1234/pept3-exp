@@ -1,3 +1,7 @@
+"""
+NOTE: One should only refer the computed Q-value in this module as a internal training flag
+     and should not use it for FDR control.
+"""
 import h5py
 import torch
 import numpy as np
@@ -753,6 +757,104 @@ class SemiDataset_twofold:
     def test_all_data(self):
         names, data_sa = self.prepare_sa_data(self._test_d, self._test_df)
         return FinetuneTableDataset(names, data_sa)
+
+class SemiDataset_nfold(SemiDataset_twofold):
+    def __init__(self, 
+                 table_input, 
+                 nfold=3,
+                 score_init="andromeda", 
+                 pi=0.9, 
+                 rawfile_fiels=None):
+        self._file_input = table_input
+        self._pi = pi
+        if not table_input.endswith("hdf5"):
+            self._hdf5 = False
+            self._data = pd.read_csv(table_input, sep='\t').sample(
+                frac=1, random_state=2022).reset_index(drop=True)
+            self._frag_msms = self.backbone_spectrums()
+        else:
+            self._hdf5 = True
+            if rawfile_fiels is None:
+                _feat = h5py.File(table_input, 'r')
+            else:
+                pass
+            # Peptide, Charge, collision_energy_aligned_normed, Label,
+            _label = np.array(_feat['reverse']).astype("int")
+            _label[_label == 1] = -1
+            _label[_label == 0] = 1
+            self._data = pd.DataFrame({
+                "Peptide_integer": list(np.array(_feat['sequence_integer'])),
+                "Charge_onehot": list(np.array(_feat['precursor_charge_onehot'])),
+                "Label": _label.squeeze(),
+                "andromeda": np.array(_feat['score']).squeeze(),
+                "collision_energy_aligned_normed": np.array(_feat['collision_energy_aligned_normed']).squeeze()
+            })
+            self._frag_msms = np.array(_feat['intensities_raw'])
+            print(f"Total {len(self._frag_msms)} data loader from hdf5")
+        order = np.arange(len(self._frag_msms))
+        np.random.shuffle(order)
+        self._nfold = nfold
+        self._score_init = score_init
+        self._data = self._data.reindex(order)
+        self._frag_msms = self._frag_msms[order]
+        self._nfold_index = self.split_dataset()
+        self.set_index(0)
+
+    def set_index(self, index):
+        assert index < self._nfold
+        self._index = index
+        self._d, self._df = self.index2dataset(*self._nfold_index[index][:2])
+        self._test_d, self._test_df = self.index2dataset(*self._nfold_index[index][2:])
+        self.assign_train_score(self._d[self._score_init])
+        self.assign_test_score(self._test_d[self._score_init])
+        return self
+
+    def index2dataset(self, target_index, decoy_index):
+        ms_data = self._data.iloc[target_index].append(self._data.iloc[decoy_index])
+        ms_frag = np.concatenate(
+            (self._frag_msms[target_index], self._frag_msms[decoy_index]), axis=0)
+        return ms_data, ms_frag
+
+    def split_dataset(self):
+        targets_index = self._data[self._data['Label'] == 1].index.values
+        decoys_index = self._data[self._data['Label'] == -1].index.values
+        
+        len_test_target = int(len(targets_index) / self._nfold)
+        len_test_decoy = int(len(decoys_index) / self._nfold)
+        nfold_index = []
+        for i in range(self._nfold):
+            t_start = i*len_test_target
+            t_end = (i+1)*len_test_target if i != (self._nfold - 1) else len(targets_index)
+            d_start = i*len_test_decoy
+            d_end = (i+1)*len_test_decoy if i != (self._nfold - 1) else len(decoys_index)
+            
+            test_target = targets_index[t_start:t_end]    
+            test_decoy = decoys_index[d_start:d_end]    
+            
+            train_target =  np.concatenate([
+                targets_index[:t_start],
+                targets_index[t_end:]
+            ])
+            train_decoy =  np.concatenate([
+                decoys_index[:d_start],
+                decoys_index[d_end:]    
+            ])
+            nfold_index.append((train_target, train_decoy, test_target, test_decoy))
+        
+        return nfold_index
+
+    def id2predict(self):
+        predictable_ids = []
+        if not self._hdf5:
+            for i in range(self._nfold):
+                test_d, _ = self.index2dataset(*self._nfold_index[i][2:])
+                predictable_ids.append(test_d['SpecId'])
+        else:
+            for i in range(self._nfold):
+                test_d, _ = self.index2dataset(*self._nfold_index[i][2:])
+                predictable_ids.append(test_d.index.values)
+        return predictable_ids
+
 
 
 class FinetuneTableDataset(Dataset):

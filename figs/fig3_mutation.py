@@ -133,14 +133,21 @@ def vis_match(pep, mut_loc, mut_core, f):
 
 CHECK = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/rescoring_for_paper_2/percolator"
 misfilename = "data/fig3_mutation_our_prosit.txt"
+# CHECK = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/3fold_hdf5_0.1"
+# misfilename = "data/fig3_mutation_our_ft_0.1.txt"
 # CHECK = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/percolator_hdf5_0.1"
-# misfilename = "data/fig3_mutation_our_ft.txt"
+# misfilename = "data/fig3_mutation_our_ft_twofold.txt"
+# CHECK = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/3fold_hdf5_0.01"
+# misfilename = "data/fig3_mutation_our_ft_0.0.1.txt"
+
 FASTA = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/Mel15OP1_mut_only.fasta"
 print(f"Save to {misfilename}")
 PEPTIDE = read_peptide(CHECK, threshold=0.03)
 # -----------------------------------------
+# protein_groups = pd.read_csv(
+#     '/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/txt/peptides.txt', sep='\t')
 protein_groups = pd.read_csv(
-    '/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/txt/peptides.txt', sep='\t')
+    '/data2/yejb/prosit/boosting_bp/txt_Mel15/peptides.txt', sep='\t')
 protein_groups = protein_groups[protein_groups['Reverse'] != '+']
 protein_groups = protein_groups[protein_groups['Proteins'].apply(
     lambda x: all([if_mutation(p) for p in x.split(";")]))]
@@ -156,7 +163,7 @@ print(f"Total {len(MUT_DATA)} to check")
 mut_pep_count = []
 
 P_bar = tqdm(PEPTIDE)
-with open(f"log_{misfilename}", 'w') as f:
+with open(f"{misfilename}_log", 'w') as f:
     for pep in P_bar:
         P_bar.set_description(f"Found {len(mut_pep_count)}")
         P_bar.refresh()
@@ -169,6 +176,7 @@ with open(f"log_{misfilename}", 'w') as f:
             elif check_missense_overlap(core_pep, pep, mut_loc):
                 vis_match(pep, mut_loc, mut_core, f)
                 mut_pep_count.append((pep, mut_core[0], mut_core[1]))
+mut_pep_count = sorted(mut_pep_count, key=lambda x: x[0])
 with open(misfilename, 'w') as f:
     for p in mut_pep_count:
         f.write("\n".join(p))

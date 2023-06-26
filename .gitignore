@@ -12,6 +12,9 @@ __pycache__/
 result.txt
 figs/fig
 figs/fig/
+figs/data_bp/
+figs/fig-1/
+*.peprec
 # C extensions
 *.so
 
@@ -150,4 +153,5 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/python
 logs/
 figs/figs/**
+supps/data*/
 figs/HLA_cache.pkl

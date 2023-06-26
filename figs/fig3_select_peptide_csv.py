@@ -41,8 +41,10 @@ total_table = None
 allele_len_tab = 0
 nf_allele_len_tab = 0
 
-prosit_DIR = "/data1/yejb/prosit/figure3/forPRIDE/Alleles"
-ft_DIR = "/data1/yejb/prosit/figure3/percolator_hdf5_allele_0.1"
+# prosit_DIR = "/data1/yejb/prosit/figure3/forPRIDE/Alleles"
+prosit_DIR = "/data2/yejb/prosit/figs/alleles/forPRIDE/Alleles"
+# ft_DIR = "/data1/yejb/prosit/figure3/percolator_hdf5_allele_0.1"
+ft_DIR = "/data1/yejb/prosit/figure3/prosit_hcd/3fold_hdf5_allele_0.1"
 for contain_name in all_alleles_names:
     if contain_name[0] not in "ABCG":
         continue

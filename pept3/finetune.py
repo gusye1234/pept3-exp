@@ -10,7 +10,7 @@ import sys
 from tqdm import tqdm
 import numpy as np
 from . import helper
-from .dataset import FragDataset, IrtDataset, SemiDataset, SemiDataset_twofold
+from .dataset import FragDataset, IrtDataset, SemiDataset, SemiDataset_twofold, SemiDataset_nfold
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -252,7 +252,7 @@ def semisupervised_finetune_twofold(ori_model, input_table, batch_size=1024, gpu
     def finetune(dataset):
         model = deepcopy(ori_model)
         model = model.train()
-        optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, eps=1e-8)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, eps=1e-8)
         if not onlypos:
             loss_fn = helper.FinetuneSALoss(pearson=pearson)
         else:
@@ -402,7 +402,7 @@ def semisupervised_finetune_twofold_test(ori_model, input_table, batch_size=1024
                               np.sum(q_values < 0.01)), end=' ')
                     train_loader = DataLoader(dataset.semisupervised_sa_finetune(
                         threshold=q_threshold), batch_size=batch_size, shuffle=True)
-                    if True:
+                    if enable_test:
                         scores = []
                         for i, data in enumerate(infer_loader):
                             data = {k: v.to(device) for k, v in data.items()}
@@ -436,8 +436,7 @@ def semisupervised_finetune_twofold_test(ori_model, input_table, batch_size=1024
                 loss_b.backward()
                 optimizer.step()
                 sys.stdout.flush()
-                # print(
-                #     f"\r    -Train Loss {loss/train_count:.3f}, {loss_l1/train_count:.3f}, {loss_sa/train_count:.3f}", end="")
+                
                 loss += loss_b.item()
                 loss_l1 += l1_loss
                 loss_sa += fine_loss
@@ -448,6 +447,8 @@ def semisupervised_finetune_twofold_test(ori_model, input_table, batch_size=1024
         return best_model
 
     dataset_manager = SemiDataset_twofold(input_table)
+    # dataset_manager = SemiDataset_nfold(input_table, nfold=2)
+    # dataset_manager.set_index(1)
     id2remove = dataset_manager.id2remove()  # default first part
     if only_id2remove:
         return ori_model, ori_model, id2remove
@@ -456,6 +457,129 @@ def semisupervised_finetune_twofold_test(ori_model, input_table, batch_size=1024
     dataset_manager = dataset_manager.reverse()
     model2 = finetune(dataset_manager)
     return model1, model2, id2remove
+
+
+def semisupervised_finetune_nfold(ori_model, input_table, batch_size=1024, gpu_index=0, max_epochs=10, nfold=3,
+                                  update_interval=1, q_threshold=0.1, validate_q_threshold=0.01, pearson=False,
+                                  enable_test=False, only_id2select=False, onlypos=False):
+    helper.set_seed(2022)
+    if torch.cuda.is_available():
+        device = torch.device(f"cuda:{gpu_index}")
+    else:
+        device = torch.device("cpu")
+    print(
+        f"Run on {device}, nfold = {nfold},with training-q {q_threshold}, valid-q {validate_q_threshold}, epoch {max_epochs}")
+
+    def finetune(dataset: SemiDataset_twofold):
+        model = deepcopy(ori_model)
+        model = model.train()
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, eps=1e-8)
+        if not onlypos:
+            loss_fn = helper.FinetuneSALoss(pearson=pearson)
+        else:
+            loss_fn = helper.FinetuneSALossNoneg(pearson=pearson)
+        model = model.to(device)
+        data_loader = DataLoader(
+            dataset.train_all_data(), batch_size=1024, shuffle=False)
+        infer_loader = DataLoader(
+            dataset.test_all_data(), batch_size=1024, shuffle=False)
+        ori_q_values = dataset.Q_values()
+        print(f">>Baseline Andromeda({len(ori_q_values)}): ", end='')
+        print(np.sum(ori_q_values < 0.001), np.sum(
+            ori_q_values < 0.01), np.sum(ori_q_values < 0.1))
+        best_model = None
+        best_q_value_num = 0
+        for epoch in range(max_epochs * update_interval):
+            loss = 0
+            loss_l1 = 0.
+            loss_sa = 0.
+            if (epoch % update_interval) == 0:
+                with torch.no_grad():
+                    scores = []
+                    for i, data in enumerate(data_loader):
+                        data = {k: v.to(device) for k, v in data.items()}
+                        data["peptide_mask"] = helper.create_mask(
+                            data['sequence_integer'])
+                        pred = model(data)
+                        if not pearson:
+                            sas = helper.spectral_angle(
+                                data['intensities_raw'], pred)
+                        else:
+                            sas = helper.pearson_coff(
+                                data['intensities_raw'], pred)
+                        scores.append(sas.detach().cpu().numpy())
+                    scores = np.concatenate(scores, axis=0)
+                    dataset.assign_train_score(scores)
+                    q_values = dataset.Q_values()
+                    q_values_num = np.sum(q_values < validate_q_threshold)
+                    if q_values_num > best_q_value_num:
+                        del best_model
+                        best_model = deepcopy(model)
+                        best_q_value_num = q_values_num
+                        print(
+                            f"({epoch}){(np.sum(q_values < 0.001), np.sum(q_values < 0.01))}*", end=' ')
+                    else:
+                        print(f"({epoch})", (np.sum(q_values < 0.001),
+                              np.sum(q_values < 0.01)), end=' ')
+                    train_loader = DataLoader(dataset.semisupervised_sa_finetune(
+                        threshold=q_threshold), batch_size=batch_size, shuffle=True)
+                    if enable_test:
+                        scores = []
+                        for i, data in enumerate(infer_loader):
+                            data = {k: v.to(device) for k, v in data.items()}
+                            data["peptide_mask"] = helper.create_mask(
+                                data['sequence_integer'])
+                            pred = model(data)
+                            if not pearson:
+                                sas = helper.spectral_angle(
+                                    data['intensities_raw'], pred)
+                            else:
+                                sas = helper.pearson_coff(
+                                    data['intensities_raw'], pred)
+                            scores.append(sas.detach().cpu().numpy())
+                        scores = np.concatenate(scores, axis=0)
+                        dataset.assign_test_score(scores)
+                        test_q_v = dataset.Q_values_test()
+                        print(
+                            f"test: ({epoch}){(np.sum(test_q_v < 0.001), np.sum(test_q_v < 0.01))}")
+
+                # train_loader = DataLoader(dataset.semisupervised_sa_finetune_noneg(
+                # ), batch_size=batch_size, shuffle=True)
+            for i, data in enumerate(train_loader):
+                train_count = i + 1
+                data = {k: v.to(device) for k, v in data.items()}
+                data["peptide_mask"] = helper.create_mask(
+                    data['sequence_integer'])
+                pred = model(data)
+                loss_b, fine_loss, l1_loss = loss_fn(
+                    data['intensities_raw'], pred, data['label'])
+                optimizer.zero_grad()
+                loss_b.backward()
+                optimizer.step()
+                sys.stdout.flush()
+                
+                loss += loss_b.item()
+                loss_l1 += l1_loss
+                loss_sa += fine_loss
+        if np.sum(ori_q_values < validate_q_threshold) > best_q_value_num:
+            del best_model
+            best_model = deepcopy(ori_model)
+            print("Bad fine-tuning results, roll back to the original")
+        return best_model
+
+    dataset_manager = SemiDataset_nfold(input_table, nfold=nfold)
+    
+    id2select = dataset_manager.id2predict()
+    if only_id2select:
+        return [ori_model for _ in range(nfold)], id2select
+    
+    models = []
+    for i in range(nfold):
+        dataset_manager.set_index(i)
+        print(f">>Running fold-{i}, train set {len(dataset_manager._d)}, test set {len(dataset_manager._test_d)}")
+        model = finetune(dataset_manager)
+        models.append(model)
+    return models, id2select
 
 
 if __name__ == "__main__":

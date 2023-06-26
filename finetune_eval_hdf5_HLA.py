@@ -294,7 +294,7 @@ if __name__ == "__main__":
         run_model = run_model.eval()
 
     sample_size = None
-    gpu_index = 3
+    gpu_index = 0
     set_threshold = 0.1
     max_epochs = 20
     print("Running twofold", frag_model)
@@ -327,7 +327,7 @@ if __name__ == "__main__":
         origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit.tab"
         tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/data.hdf5"
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-            run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
+            run_model, tabels_file, max_epochs=max_epochs, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=True, q_threshold=set_threshold)
         torch.save([finetune_model1.state_dict(), finetune_model2.state_dict()],
                    os.path.join(model_saving, f"{frag_model}.pth"))
         print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,

@@ -5,6 +5,12 @@ import pandas as pd
 from collections import defaultdict
 from typing import Dict, List
 
+neo_file_prosit = "./data/fig3_mutation_our_prosit.txt"
+# neo_file_ft_prosit = "./data/fig3_mutation_our_ft_twofold.txt"
+neo_file_ft_prosit = "./data/fig3_mutation_our_ft_0.1.txt"
+prosit_percolator_dir = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/rescoring_for_paper_2/percolator"
+ft_prosit_percolator_dir = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/3fold_hdf5_0.1"
+# ft_prosit_percolator_dir = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/percolator_hdf5_0.1"
 
 def read_peptide(check_dir, threshold=0.01):
     df = pd.read_csv(join(check_dir, "prosit_target.peptides"), sep='\t')
@@ -118,8 +124,8 @@ def check_frameshift_overlap(target, pep, loc):
 # ft_mut_dict, ft_mut_pair = read_mut("./fig3_mutation_missense_ft.txt")
 
 prosit_mut_dict, prosit_mut_pair = read_mut(
-    "./data/fig3_mutation_our_prosit.txt")
-ft_mut_dict, ft_mut_pair = read_mut("./data/fig3_mutation_our_ft.txt")
+    neo_file_prosit)
+ft_mut_dict, ft_mut_pair = read_mut(neo_file_ft_prosit)
 
 # -------------------------------------
 
@@ -188,9 +194,9 @@ print("(missense)Supp Mut pep and type", len(supp_mut_found_dict_missense),
       len(set(missense_all_supp_mut_types)), len(set(missense_all_supp_mut_proteins)))
 # -------------------------------------
 prosit_pep, p_df = read_peptide(
-    "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/rescoring_for_paper_2/percolator", threshold=0.03)
+    prosit_percolator_dir, threshold=0.03)
 ft_pep, ft_df = read_peptide(
-    "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/percolator_hdf5_0.1", threshold=0.03)
+    ft_prosit_percolator_dir, threshold=0.03)
 LOSS = prosit_pep - ft_pep
 GAIN = ft_pep - prosit_pep
 SHARE = ft_pep.intersection(prosit_pep)

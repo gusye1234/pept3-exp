@@ -3,16 +3,14 @@ from collections import defaultdict, OrderedDict
 import re
 import sys
 import torch
-sys.path.append("..")
 import numpy as np
-import constants
-from pept3 import helper
-import pept3
+from . import constants
+from . import helper
 import math
 import random
 from tqdm import tqdm
-import bio_helper
-from bio_helper import peptide_parser
+from . import bio_helper
+from .bio_helper import peptide_parser
 from random import choices, sample
 
 MSMS_NAME = None
@@ -172,7 +170,7 @@ def combine_m_r_p(msms_file, raw_dir, percolator_tab):
 
 def test_model_frag(model):
     import json
-    from pept3.dataset import FragDataset
+    from .dataset import FragDataset
     from torch.utils.data import DataLoader
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -334,7 +332,7 @@ def get_irt_all(run_model, data_cand):
         charges = torch.from_numpy(charges)
         data = {}
         data["sequence_integer"] = seqs.to(device)
-        data['peptide_mask'] = pept3.helper.create_mask(seqs).to(device)
+        data['peptide_mask'] = helper.create_mask(seqs).to(device)
         return data
 
     run_model = run_model.to(device)
@@ -368,7 +366,7 @@ def get_sa_all(run_model, data_nce_cand, frag_msms, pearson=False):
         data["sequence_integer"] = seqs.to(device)
         data["collision_energy_aligned_normed"] = nces.to(device)
         data['precursor_charge_onehot'] = charges.to(device)
-        data['peptide_mask'] = pept3.helper.create_mask(seqs).to(device)
+        data['peptide_mask'] = helper.create_mask(seqs).to(device)
         return data
 
     run_model = run_model.to(device)
@@ -403,7 +401,7 @@ def get_sa_from_array(run_model, seqs, nces, charges, frag_msms, gpu_index=0, pe
         "collision_energy_aligned_normed": torch.from_numpy(nces).to(device),
         "precursor_charge_onehot": torch.from_numpy(charges).to(device)
     }
-    data["peptide_mask"] = pept3.helper.create_mask(
+    data["peptide_mask"] = helper.create_mask(
         data['sequence_integer']).to(device)
 
     run_model = run_model.to(device)
@@ -445,7 +443,7 @@ def get_single_score_all(run_model, data_nce_cand, frag_msms):
         data["collision_energy_aligned_normed"] = nces.to(device)
         data['precursor_charge_onehot'] = charges.to(device)
         data['intensities_raw'] = frag_msms_torch.to(device)
-        data['peptide_mask'] = pept3.helper.create_mask(seqs).to(device)
+        data['peptide_mask'] = helper.create_mask(seqs).to(device)
         data['irt'] = torch.from_numpy(rt).to(device)
         return data
 
@@ -479,7 +477,7 @@ def get_sa_all_scale(run_model, data_nce_cand, frag_msms, inten_scales):
         data["sequence_integer"] = seqs.to(device)
         data["collision_energy_aligned_normed"] = nces.to(device)
         data['precursor_charge_onehot'] = charges.to(device)
-        data['peptide_mask'] = pept3.helper.create_mask(seqs).to(device)
+        data['peptide_mask'] = helper.create_mask(seqs).to(device)
         return data
 
     run_model = run_model.to(device)
@@ -502,6 +500,7 @@ def get_sa_all_scale(run_model, data_nce_cand, frag_msms, inten_scales):
         all_sa = torch.cat(sass, dim=0)
         all_pred = torch.cat(pred_tensor, dim=0)
     return all_sa, all_pred
+
 
 def generate_from_msms(msms_data, name, nces=33):
     seqs = [i[name.index("Modified sequence")].strip("_") for i in msms_data]
@@ -701,7 +700,7 @@ def read_m_r_ions(save2):
     m_i_delta = []
     m_i = []
     with open(save2) as f:
-        for line in f:
+        for line in tqdm(f):
             m1, m2, m3 = line.strip().split("\t")
             m_r.append(eval(m1))
             m_i_delta.append(eval(m2))

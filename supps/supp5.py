@@ -37,7 +37,8 @@ def read_mel(pep_dirs, melname, threshold=0.01, add_dir=None):
 ft_mels_table = None
 
 prosit_mels_peptides = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/"
-ft_mels_peptides = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/prosit_hcd/percolator_hdf5_Mels_0.1"
+# ft_mels_peptides = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/prosit_hcd/percolator_hdf5_Mels_0.1"
+ft_mels_peptides = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/prosit_hcd/3fold_Mels_0.1"
 
 for melname in MELS:
     print(melname)
@@ -184,7 +185,8 @@ def extract_info(mut_type):
 
 
 prosit_peptide_file = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/forPride/rescoring_for_paper_2/percolator/prosit_target.peptides"
-ft_peptide_file = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/percolator_hdf5_0.1/prosit_target.peptides"
+# ft_peptide_file = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/percolator_hdf5_0.1/prosit_target.peptides"
+ft_peptide_file = "/data/yejb/prosit/figs/boosting/figs/Figure_5_Mel15/3fold_hdf5_0.1/prosit_target.peptides"
 
 _, prosit_peps_score_dict = peptides2dict(prosit_peptide_file)
 _, ft_peps_score_dict = peptides2dict(ft_peptide_file)
@@ -277,6 +279,10 @@ prosit_only_binders.to_csv("data/mel15_prosit.csv", index=False)
 ft_only_binders = only_binders_form_mut_df(ft_mutation_table, ft=True)
 ft_only_binders.to_csv("data/mel15_ft.csv", index=False)
 
+# TODO: add new added binders from pept3-----------------
+new_add_binders = {k: v for k, v in ft_mutation_table.items() if k not in prosit_mutation_table}
+only_binders_form_mut_df(new_add_binders, ft=True).to_csv("data/mel15_ft_added.csv", index=False)
+# -----------------------
 writer = pd.ExcelWriter("data/supp5.xlsx", engine='openpyxl')
 # dfs = {
 #     "Mel15 Prosit Neo-Epitopes": prosit_mut_df,

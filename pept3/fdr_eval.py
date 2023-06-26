@@ -1,53 +1,31 @@
 import sys
-sys.path.append("./figs")
 from contextlib import redirect_stdout
 import pandas as pd
 import torch
 import os
 from time import time
-from pept3 import helper
-from pept3 import model
-from pept3 import finetune
 import h5py
 from tqdm import tqdm
 import numpy as np
-from tools import get_sa_from_array
-from fdr_test import fdr_test, fixed_features, fdr_test_twofold
-from copy import deepcopy
-
-# from figs.fdr_test import fdr_test_reverse
+from .tools import get_sa_from_array
 
 
-def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["sa", "sa"]):
-    baseline = "sa"
-    table1 = pd.read_csv(os.path.join(
-        tab1, f"{compare[0]}_target.psms"), sep='\t')
-    table2 = pd.read_csv(os.path.join(
-        tab2, f"{compare[1]}_target.psms"), sep='\t')
-
-    id1 = set(table1[table1['q-value'] < testfdr]['PSMId'])
-    id2 = set(table2[table2['q-value'] < testfdr]['PSMId'])
-    overlap = id1.intersection(id2)
-    union = id1.union(id2)
-    print(f"{compare}-{testfdr}:", (len(id1) - len(overlap)) / len(union),
-          len(overlap) / len(union), (len(id2) - len(overlap)) / len(union))
-    return len(id1) - len(overlap), len(overlap), len(id2) - len(overlap)
-
-
-def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab, save_tab, fdr_threshold=0.01, show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None, id2remove=None, pearson=False, gpu_index=0):
-    run_model1 = run_model1.eval()
-    run_model2 = run_model2.eval()
+def eval_fdr_hdf5(models, table_file, feature_csv, origin_prosit_tab, save_tab, fdr_threshold=0.01,
+                  show_fdr=[0.1, 0.01, 0.001, 0.0001], sample_size=None, need_all=False, irt_model=None,
+                  id2selects=None, pearson=False, gpu_index=0):
+    """
+    Retrieve relevant features from HDF5 files, and generate DL features for filling back.
+    """
+    models = [m.eval() for m in models]
 
     record = {}
     record['fdrs'] = [100 * i for i in show_fdr]
     totest = ["prosit"]
 
     with torch.no_grad():
-        print("Starting scoring")
         data = h5py.File(table_file, 'r')
         sample_size = len(data['sequence_integer']
                           ) if sample_size is None else sample_size
-        print("Sampling", sample_size)
         seq_data = np.array(data['sequence_integer'][:sample_size])
         charges = np.array(data['precursor_charge_onehot'][:sample_size])
         nces = np.array(data['collision_energy_aligned_normed'][:sample_size])
@@ -59,38 +37,29 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
         label[label == 1] = -1
         label[label == 0] = 1
         total_index = np.arange(len(label))
-        target_index = total_index[label == 1]
-        decoy1_index = np.array(id2remove)
-        decoy1_index = decoy1_index[decoy1_index < sample_size]
-        decoy2_index = np.array([i for i in total_index if (
-            label[i] == -1 and i not in decoy1_index)])
-        print(
-            f"Comb: {len(target_index)}, {len(decoy1_index)}, {len(decoy2_index)}")
+        
+        sas_list = []
+        sas_tensor_list = [] 
+        orders = []
+        for now_i, (model, ids) in enumerate(zip(models, id2selects)):
+            ids = ids[ids < sample_size] 
+            print(f">> generating fold-{now_i} [{len(ids)}]...")
+            sa, sa_tensor = get_sa_from_array(model,
+                                              seq_data[ids],
+                                              nces[ids],
+                                              charges[ids], 
+                                              frag_msms[ids], 
+                                              gpu_index=gpu_index)
+            sa = sa.cpu().numpy()
+            sa_tensor = sa_tensor.cpu().numpy()
+            
+            sas_list.append(sa)
+            sas_tensor_list.append(sa_tensor)
+            orders.append(ids)
         # --------------------------------------------
-        t_sa_1, t_sa_t_1 = get_sa_from_array(
-            run_model1, seq_data[target_index], nces[target_index],
-            charges[target_index], frag_msms[target_index], gpu_index=gpu_index)
-        t_sa_2, t_sa_t_2 = get_sa_from_array(
-            run_model2, seq_data[target_index], nces[target_index],
-            charges[target_index], frag_msms[target_index], gpu_index=gpu_index)
-        t_sa = ((t_sa_1 + t_sa_2) / 2).cpu().numpy()
-        t_sa_t = ((t_sa_t_1 + t_sa_t_2) / 2).cpu().numpy()
-        # --------------------------------------------
-        d2_sa, d2_sa_t = get_sa_from_array(
-            run_model1, seq_data[decoy2_index], nces[decoy2_index],
-            charges[decoy2_index], frag_msms[decoy2_index], gpu_index=gpu_index)
-        d1_sa, d1_sa_t = get_sa_from_array(
-            run_model2, seq_data[decoy1_index], nces[decoy1_index],
-            charges[decoy1_index], frag_msms[decoy1_index], gpu_index=gpu_index)
-        d2_sa = d2_sa.cpu().numpy()
-        d2_sa_t = d2_sa_t.cpu().numpy()
-        d1_sa = d1_sa.cpu().numpy()
-        d1_sa_t = d1_sa_t.cpu().numpy()
-        # --------------------------------------------
-        sas = np.concatenate([t_sa, d1_sa, d2_sa], axis=0)
-        sas_tensors = np.concatenate([t_sa_t, d1_sa_t, d2_sa_t], axis=0)
-        orders = np.concatenate(
-            [target_index, decoy1_index, decoy2_index], axis=0)
+        sas = np.concatenate(sas_list, axis=0)
+        sas_tensors = np.concatenate(sas_tensor_list, axis=0)
+        orders = np.concatenate(orders, axis=0)
         orders = np.argsort(orders)
         sas = sas[orders]
         sas_tensors = sas_tensors[orders]
@@ -249,7 +218,6 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
         prosit_tab = pd.DataFrame(Features)
         prosit_tab = prosit_tab[prosit_features]
         prosit_tab.to_csv(f"{save_tab}/prosit.tab", sep='\t', index=False)
-    print(" start percolator... ")
     for name in totest:
         start = time()
         os.system(f"percolator -v 0 --weights {save_tab}/{name}_weights.csv \
@@ -264,63 +232,7 @@ def eval_fdr(run_model1, run_model2, table_file, feature_csv, origin_prosit_tab,
         record[name] = []
         for fdr in show_fdr:
             record[name].append((target_tab['q-value'] < fdr).sum())
-        print(f"{name}:{time()-start:.1f}", end='-')
+        print(f"{name}:{time()-start:.1f}", end='...')
     print()
     return pd.DataFrame(record)
 
-
-if __name__ == "__main__":
-    run_model = model.PrositIRT()
-    run_model.load_state_dict(torch.load(
-        f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
-    prosit_irt = run_model.eval()
-
-    frag_model = "prosit_hcd"
-    if frag_model == "prosit_cid":
-        run_model = model.PrositFrag()
-        run_model.load_state_dict(torch.load(
-            "./checkpoints/frag_boosting/best_cid_frag_PrositFrag-512.pth", map_location="cpu"))
-        run_model = run_model.eval()
-    elif frag_model == "prosit_hcd":
-        run_model = model.PrositFrag()
-        run_model.load_state_dict(torch.load(
-            "./checkpoints/frag_boosting/best_hcd_frag_PrositFrag-512.pth", map_location="cpu"))
-        run_model = run_model.eval()
-    elif frag_model == "prosit_l1":
-        run_model = model.PrositFrag()
-        run_model.load_state_dict(torch.load(
-            "./checkpoints/frag_boosting/best_frag_l1_PrositFrag-1024.pth", map_location="cpu"))
-        run_model = run_model.eval()
-
-    sample_size = None
-    gpu_index = 7
-    set_threshold = 0.1
-    print("Running twofold", frag_model)
-    if_pearson = (frag_model in ['pdeep2'])
-    for which in ['Mel15']:
-        print("-------------------------------")
-        print("boosting figure3", which)
-        save_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/percolator_hdf5/"
-        if not os.path.exists(save_tab):
-            os.mkdir(save_tab)
-        feature_csv = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/percolator/features.csv"
-        origin_prosit_tab = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/percolator/prosit.tab"
-        tabels_file = f"/data/yejb/prosit/figs/boosting/figs/Figure_5_{which}/forPride/rescoring_for_paper_2/data.hdf5"
-        model_saving_path = f"./checkpoints/finetuned/{which}"
-        if not os.path.exists(model_saving_path):
-            os.mkdir(model_saving_path)
-        finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-            run_model, tabels_file, pearson=if_pearson, gpu_index=gpu_index, only_id2remove=False, q_threshold=set_threshold)
-        # torch.save(finetune_model1.state_dict(),
-        #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_first_{which}.pth")
-        # torch.save(finetune_model2.state_dict(),
-        #            f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth")
-
-        # finetune_model1 = deepcopy(run_model)
-        # finetune_model1.load_state_dict(torch.load(
-        #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_first_{which}.pth", map_location='cpu'))
-        # finetune_model2 = deepcopy(run_model)
-        # finetune_model2.load_state_dict(torch.load(
-        #     f"./checkpoints/frag_boosting/fig3/{frag_model}_model_second_{which}.pth", map_location='cpu'))
-        print(eval_fdr(finetune_model1, finetune_model2, tabels_file, feature_csv, origin_prosit_tab, save_tab,
-                       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson, gpu_index=gpu_index).to_string())

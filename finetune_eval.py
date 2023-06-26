@@ -8,7 +8,7 @@ from time import time
 from pept3 import helper
 from pept3 import model
 from pept3 import finetune
-from fdr_test import fdr_test, fixed_features, fdr_test_twofold
+from pept3.helper import fixed_features, fdr_test_twofold
 
 
 # from figs.fdr_test import fdr_test_reverse
@@ -86,31 +86,31 @@ if __name__ == "__main__":
         f"./checkpoints/irt/best_valid_irt_{run_model.comment()}-1024.pth", map_location="cpu"))
     prosit_irt = run_model.eval()
 
-    frag_model = "pdeep2"
-    if frag_model == "trans":
-        run_model = model.TransProBest()
-        run_model.load_state_dict(torch.load(
-            "./checkpoints/best/best_valid_frag_TransPro-6-3-128-0.1-256-1048.pth", map_location="cpu"))
-        run_model = run_model.eval()
-    elif frag_model == "trans_l1":
-        run_model = model.TransProBest()
-        run_model.load_state_dict(torch.load(
-            "/home/gus/Desktop/ms_pred/checkpoints/frag/best_frag_l1_TransProBest-6-3-128-0.1-256-1024.pth", map_location="cpu"))
-        run_model = run_model.eval()
-    elif frag_model == "prosit":
+    frag_model = "prosit_l1"
+    # if frag_model == "trans":
+    #     run_model = model.TransProBest()
+    #     run_model.load_state_dict(torch.load(
+    #         "./checkpoints/best/best_valid_frag_TransPro-6-3-128-0.1-256-1048.pth", map_location="cpu"))
+    #     run_model = run_model.eval()
+    # elif frag_model == "trans_l1":
+    #     run_model = model.TransProBest()
+    #     run_model.load_state_dict(torch.load(
+    #         "/home/gus/Desktop/ms_pred/checkpoints/frag/best_frag_l1_TransProBest-6-3-128-0.1-256-1024.pth", map_location="cpu"))
+    #     run_model = run_model.eval()
+    # elif frag_model == "prosit":
+    #     run_model = model.PrositFrag()
+    #     run_model.load_state_dict(torch.load(
+    #         "./checkpoints/best/best_valid_irt_PrositFrag-1024.pth", map_location="cpu"))
+    #     run_model = run_model.eval()
+    if frag_model == "prosit_l1":
         run_model = model.PrositFrag()
         run_model.load_state_dict(torch.load(
-            "./checkpoints/best/best_valid_irt_PrositFrag-1024.pth", map_location="cpu"))
-        run_model = run_model.eval()
-    elif frag_model == "prosit_l1":
-        run_model = model.PrositFrag()
-        run_model.load_state_dict(torch.load(
-            "/home/gus/Desktop/ms_pred/checkpoints/best/best_frag_l1_PrositFrag-1024.pth", map_location="cpu"))
+            "./checkpoints/best/best_frag_l1_PrositFrag-1024.pth", map_location="cpu"))
         run_model = run_model.eval()
     elif frag_model == "pdeep2":
         run_model = model.pDeep2_nomod()
         run_model.load_state_dict(torch.load(
-            "/home/gus/Desktop/ms_pred/checkpoints/best/best_frag_l1_pDeep2-1024.pth", map_location="cpu"))
+            "./checkpoints/best/best_frag_l1_pDeep2-1024.pth", map_location="cpu"))
         run_model = run_model.eval()
 
     sample_size = None
@@ -135,12 +135,11 @@ if __name__ == "__main__":
         tabels_file = fixed_features(
             msms_file, raw_dir, f"/data2/yejb/prosit/figs/figure6/{which}/percolator/try/prosit_l1")
         finetune_model1, finetune_model2, id2remove = finetune.semisupervised_finetune_twofold(
-            run_model, tabels_file, pearson=if_pearson, only_id2remove=False, onlypos=True, max_epochs=20)
-        # print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab2,
-        #       irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
+            run_model, tabels_file, pearson=if_pearson, only_id2remove=False, onlypos=False)
+        print(eval_fdr(finetune_model1, finetune_model2, msms_file, raw_dir, save_tab2,
+              irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
         print(eval_fdr(run_model, run_model, msms_file, raw_dir, save_tab1,
               irt_model=prosit_irt, sample_size=sample_size, id2remove=id2remove, pearson=if_pearson).to_string())
-        exit()
         # analysis_dict[which] = overlap_analysis_peptides(save_tab1, save_tab2)
     # exit()
     for which in ["trypsin", 'chymo', "lysc", "gluc"]:

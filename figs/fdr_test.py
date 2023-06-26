@@ -1280,7 +1280,6 @@ def fdr_test_twofold(run_model1, run_model2, msms_file, raw_dir, save_tab, sampl
         andre_table.to_csv(
             f"{save_tab}/spectral_all.tab", sep='\t', index=False)
 
-
 if __name__ == "__main__":
     which = "trypsin"
     save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/autos"
