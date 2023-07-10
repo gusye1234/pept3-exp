@@ -1327,8 +1327,7 @@ def one_pack_all_ms2pip_nfold(msms_file,
                               raw_dir,
                               ms2pip_dir,
                               pearson=False):
-    assert len(models) == len(ids2selects), "Mismatch models and ids"
-    print(f">>Running {len(models)} folds-------------")
+    print(f">>Running ms2pip eval-------------")
     name = read_name(msms_file)
     ions_save = os.path.splitext(msms_file)[0] + "_ions.txt"
     if sample_size is not None:
