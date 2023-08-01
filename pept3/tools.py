@@ -539,29 +539,6 @@ def generate_from_msms_rt(msms_data, name, nces=33):
     ]
     return data_nce_cand
 
-def ms2pip_result_convert(ms2pipdir, max_length=30, max_charge=3):
-    peprec = os.path.join(ms2pipdir, "from_maxquant.peprec")
-    result = os.path.join(ms2pipdir, "spectrum.predict_predictions.csv")
-    
-    peprec : pd.DataFrame = pd.read_csv(peprec, sep=' ')
-    result : pd.DataFrame = pd.read_csv(result)
-    result = result[result['ionnumber'] <= max_length]
-    result = result[result['charge'] <= max_charge]
-    
-    specid_dict = {}
-    for pack in result.groupby("spec_id"):
-        id_key = pack[0]
-        bio_data = peprec[peprec['spec_id'] == id_key]
-        assert len(bio_data) == 1
-        
-        ions_t = pack[1]
-        frag_msms = np.zeros((29,2,3))
-        frag_num = ions_t['ionnumber'].apply(lambda x: x-1).to_list()
-        ion_num = ions_t['ion'].apply(lambda x: 0 if x == "Y" else 1).to_list()
-        charge_num = ions_t['charge'].apply(lambda x: x-1).to_list()
-        # unlog intensity, refer to https://github.com/compomics/ms2pip#output
-        intens = ions_t['prediction'].apply(lambda x: 2**x-0.001).to_array()
-        frag_msms[frag_num, ion_num, charge_num] = intens
 
 def generate_from_msms_delta(msms_data, name, nces=33):
     seqs = [i[name.index("All modified sequences")].split(";")[
@@ -718,16 +695,15 @@ def save_m_r_ions_reverse(msms_file, raw_dir, sample_size=None):
     return name
 
 
-def read_m_r_ions(save2):
+def read_m_r_ions(save2, sample_size=None):
     m_r = []
     m_i_delta = []
     m_i = []
-    with open(save2) as f:
-        for line in tqdm(f):
-            m1, m2, m3 = line.strip().split("\t")
-            m_r.append(eval(m1))
-            m_i_delta.append(eval(m2))
-            m_i.append(eval(m3))
+    table = pd.read_csv(save2, sep='\t', header=None, nrows=sample_size)
+    m_r = table[0].apply(lambda x:eval(x)).to_list()
+    m_i_delta = table[1].apply(lambda x:eval(x)).to_list()
+    m_i = table[2].apply(lambda x:eval(x)).to_list()
+    
     return m_r, m_i_delta, m_i
 
 

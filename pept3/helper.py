@@ -1010,7 +1010,7 @@ def fdr_test_nfold(models,
 
     def add_scannr(pack):
         Features['ScanNr'] = [hash(
-            m[0][i_d['Raw file']] + "|" + m[0][i_d['Scan number']] + "|" + m[0][i_d['id']]) for m in pack]
+            f"{m[0][i_d['Raw file']]}|{m[0][i_d['Scan number']]}|{m[0][i_d['id']]}") for m in pack]
 
     def add_label(pack):
         Features['Label'] = [-1 if m[0]
@@ -1322,59 +1322,3 @@ def fdr_test_nfold(models,
         andre_table.to_csv(
             f"{save_tab}/spectral_all.tab", sep='\t', index=False)
 
-
-def one_pack_all_ms2pip_nfold(msms_file,
-                              raw_dir,
-                              ms2pip_dir,
-                              pearson=False):
-    print(f">>Running ms2pip eval-------------")
-    name = read_name(msms_file)
-    ions_save = os.path.splitext(msms_file)[0] + "_ions.txt"
-    if sample_size is not None:
-        ions_save = os.path.splitext(msms_file)[0] + f"_{sample_size}_ions.txt"
-    if not os.path.exists(ions_save):
-        print("Computing matched ions from scratch", ions_save)
-        save_m_r_ions(msms_file, raw_dir, sample_size=sample_size)
-    m_r, m_i_delta, m_i = read_m_r_ions(ions_save)
-    
-    with torch.no_grad():
-        delta_sas = []
-        sas = []
-        sas_tensor = []
-        frag_msms_list = []
-        reorder_index = []
-        for now_i, (model, ids) in enumerate(zip(models, ids2selects)):
-            print(f">> generating fold-{now_i} [{len(ids)}]...")
-            ids_all = set(ids.values)
-            ids_index = [i for i in range(len(m_r)) if int(m_r[i][0][name.index('id')]) in ids_all]
-            msms_data = [m_r[i][0] for i in ids_index]
-            
-            frag_msms_delta = [bio_helper.reverse_annotation(*i[:4]) for i in [m_i_delta[i] for i in ids_index]]
-            data_nce_cand_delta = generate_from_msms_delta(msms_data, name, nces=33)    
-            sas_delta, _ = get_sa_all(model, data_nce_cand_delta, frag_msms_delta, pearson=pearson)    
-            delta_sas.append(sas_delta)
-            
-            frag_msms = [bio_helper.reverse_annotation(*i[:4]) for i in [m_i[i] for i in ids_index]]
-            data_nce_cand = generate_from_msms(msms_data, name, nces=33)    
-            sa, sa_tensor = get_sa_all(model, data_nce_cand, frag_msms, pearson=pearson)    
-            
-            reorder_index.extend(ids_index)
-            sas.append(sa)
-            sas_tensor.append(sa_tensor)
-            frag_msms_list.append(frag_msms)
-        m_r = [m_r[i] for i in reorder_index]
-        sas = np.concatenate(sas, axis=0)
-        sas_delta = np.concatenate(delta_sas, axis=0)
-        sas_tensor = np.concatenate(sas_tensor, axis=0)
-        frag_msms = np.concatenate(frag_msms_list, axis=0)
-        frag_msms = [i.reshape(-1) for i in frag_msms]
-        if irt_model is not None:
-            msms_data = [m[0] for m in m_r]
-            data_nce_cand = generate_from_msms(msms_data, name, nces=33)
-            irts = get_irt_all(irt_model, data_nce_cand)
-            pack = [(m[0], m[1], sa, sat, sa_d, frag, irt) for m, sa, sat, sa_d,
-                    frag, irt in zip(m_r, sas, sas_tensor, sas_delta, frag_msms, irts)]
-        else:
-            pack = [(m[0], m[1], sa, sat, sa_d, frag) for m, sa, sat, sa_d,
-                    frag in zip(m_r, sas, sas_tensor, sas_delta, frag_msms)]
-    return pack, name

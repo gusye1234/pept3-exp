@@ -17,6 +17,24 @@ import pandas as pd
 from tqdm import tqdm
 
 
+def has(hint, alist):
+    for i in alist:
+        if i in hint:
+            return True
+    return False
+
+# refer to prosit
+def filter_peptide(pe: str):
+    # pat = re.compile(r".+(M\(ox\))+.*")
+    pat = re.compile(r".+(M\(ox\))*.*")
+    if pe.startswith("_(ac)"):
+        return False
+    elif has(pe, ["U", "X", "O"]):
+        return False
+    elif not re.match(pat, pe):
+        return False
+    return True
+
 def maxquant_to_peprec(evidence_file, msms_file,
                        ptm_mapping={'(ox)': 'Oxidation', '(ac)': 'Acetyl', '(cm)': 'Carbamidomethyl'},
                        fixed_modifications=[]):
@@ -53,13 +71,15 @@ def maxquant_to_peprec(evidence_file, msms_file,
     m = evidence.merge(msms[['Scan number', 'Scan index', 'id']], left_on='Best MS/MS', right_on='id')
 
     # Filter data
+    prosit_filter = (m['Modified sequence'].apply(lambda x: filter_peptide(x)))
     logging.debug("Removing decoys, contaminants, spectrum redundancy and peptide redundancy")
     len_dict = {
         'len_original': len(m),
         'len_rev': len(m[m['Reverse'] == '+']),
         'len_con': len(m[m['Potential contaminant'] == '+']),
         'len_spec_red': len(m[m.duplicated(['Raw file', 'Scan number'], keep='first')]),
-        'len_pep_red': len(m[m.duplicated(['Sequence', 'Modifications', 'Charge'], keep='first')])
+        'len_pep_red': len(m[m.duplicated(['Sequence', 'Modifications', 'Charge'], keep='first')]),
+        'len_pep_prosit': len(m[~prosit_filter]),
     }
 
     m = m.sort_values('Score', ascending=False)
@@ -67,6 +87,8 @@ def maxquant_to_peprec(evidence_file, msms_file,
     m = m[m['Potential contaminant'] != '+']
     m = m[~m.duplicated(['Raw file', 'Scan number'], keep='first')]
     m = m[~m.duplicated(['Sequence', 'Modifications', 'Charge'], keep='first')]
+    m = m[m['Modified sequence'].apply(lambda x: filter_peptide(x))]
+    m['Modified sequence'] = m['Modified sequence'].apply(lambda x: x.replace("_", ""))
     m.sort_index(inplace=True)
 
     len_dict['len_filtered'] = len(m)
@@ -77,6 +99,7 @@ def maxquant_to_peprec(evidence_file, msms_file,
      - {len_con} potential contaminants
      - {len_spec_red} redundant spectra
      - {len_pep_red} redundant peptides
+     - {len_pep_prosit} prosit modified peps
     = {len_filtered} PSMs in spectral library
     """.format(**len_dict)
 
@@ -99,13 +122,14 @@ def maxquant_to_peprec(evidence_file, msms_file,
     logging.debug("Preparing PEPREC columns")
     m['Protein list'] = m['Proteins'].str.split(';')
     m['MS2PIP ID'] = range(len(m))
-    peprec_cols = ['MS2PIP ID', 'Sequence', 'Parsed modifications', 'Charge', 'Protein list',
+    peprec_cols = ['MS2PIP ID', 'Sequence', 'Modified sequence', 'Parsed modifications', 'Charge', 'Protein list',
                    'Retention time', 'Score', 'Delta score', 'PEP', 'Scan number', 'Scan index', 'Raw file', 'Reverse']
     peprec = m[peprec_cols].sort_index().copy()
 
     col_mapping = {
         'MS2PIP ID': 'spec_id',
         'Sequence': 'peptide',
+        'Modified sequence': 'modified_peptide',
         'Parsed modifications': 'modifications',
         'Charge': 'charge',
         'Protein list': 'protein_list',
@@ -172,11 +196,11 @@ def main():
     main_convert(args.txt_folder, args.outname)
 
     # scan_mgf(peprec, args.mgf_folder, outname='{}.mgf'.format(args.outname))
-def main_convert(msms_dir, outdir):
+def main_convert(msms_dir, outdir, overwrite=True):
     save2 = os.path.join(
         outdir, "from_maxquant.peprec"
     )
-    if os.path.exists(save2):
+    if os.path.exists(save2) and not overwrite:
         return save2
     logging.basicConfig(
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -191,6 +215,7 @@ def main_convert(msms_dir, outdir):
         fixed_modifications=[('C', 'cm')]
     )
     peprec.to_csv(save2, sep=' ', index=False)
+    print("Save to", save2)
     return save2
 if __name__ == '__main__':
     main()

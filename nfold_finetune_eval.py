@@ -185,13 +185,13 @@ if __name__ == "__main__":
 
     tabels_file = fixed_features(msms_file, raw_dir,
                                  f"/data2/yejb/prosit/figs/figure5/percolator/try/prosit_l1")
-    save_tab1 = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_twofold"
-    save_tab2 = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}/finetuned_twofold"
+    save_tab1 = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_3fold"
+    save_tab2 = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}/finetuned_3fold_{q_threshold}"
     if not os.path.exists(save_tab2):
         os.mkdir(save_tab2)
 
-    # models, id2selects = finetune.semisupervised_finetune_nfold(
-    #         run_model, tabels_file, pearson=if_pearson, only_id2select=False)
+    models, id2selects = finetune.semisupervised_finetune_nfold(
+            run_model, tabels_file, pearson=if_pearson, only_id2select=False)
 
     # ori_models = [run_model for _ in models]
     # print(eval_fdr(ori_models, msms_file, raw_dir, save_tab1,
