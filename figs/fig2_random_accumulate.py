@@ -22,17 +22,19 @@ def plot_cum_fdr_two(targets, decoys, targets_f, decoys_f, names=['Target', "Dec
             t_value = np.abs(targets_f)
             d_value = np.abs(decoys_f)
 
-        t_v, t_base = np.histogram(t_value, bins=1000)
-        d_v, d_base = np.histogram(d_value, bins=1000)
+        t_v, t_base = np.histogram(t_value, bins=100)
+        d_v, d_base = np.histogram(d_value, bins=100)
 
-        t_cum_sum = np.cumsum(t_v[::-1])[::-1] / len(t_value)
-        d_cum_sum = np.cumsum(d_v[::-1])[::-1] / len(d_value)
+        # t_cum_sum = np.cumsum(t_v[::-1])[::-1] / len(t_value)
+        # d_cum_sum = np.cumsum(d_v[::-1])[::-1] / len(d_value)
 
-        prefix = "Random " if i == 0 else "Fine-tuned Random "
-        ax.plot(t_base[:-1], t_cum_sum, label=prefix +
-                names[0], linestyle='-')
-        ax.plot(d_base[:-1], d_cum_sum, label=prefix +
-                names[1], linestyle="--")
+        surfix = " in random" if i == 0 else " in random with PepT3"
+        ax.stairs(t_v, t_base, label=names[0] + surfix, linestyle='-')
+        ax.stairs(d_v, d_base, label=names[1] + surfix, linestyle="--")
+        # ax.plot(t_base[:-1], t_cum_sum, label=prefix +
+        #         names[0], linestyle='-')
+        # ax.plot(d_base[:-1], d_cum_sum, label=prefix +
+        #         names[1], linestyle="--")
     ax.set_xlabel("Spectral Angle", fontsize=10)
     ax.set_ylabel('Cumulative Distribution', fontsize=10)
     ax.legend(loc="upper left", frameon=False)
@@ -57,9 +59,9 @@ from torch.utils.data import DataLoader
 shownames = ["Trypsin", "Chymo", "Lys-C", 'Glu-C']
 for which, show in zip(["trypsin", 'chymo', 'lysc', 'gluc'], shownames):
     print(which)
-    msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
-    raw_dir = f"/data/prosit/figs/fig235/{which}/raw"
-    fixed_features_dir = f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1"
+    msms_file = f"/data2/yejb/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
+    raw_dir = f"/data2/yejb/prosit/figs/fig235/{which}/raw"
+    fixed_features_dir = f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1"
 
     frag_model = "prosit_l1"
     model_list = {
@@ -68,8 +70,8 @@ for which, show in zip(["trypsin", 'chymo', 'lysc', 'gluc'], shownames):
     }
 
     checkpoints_list = {
-        "prosit_l1": "/home/gus/Desktop/ms_pred/checkpoints/best/best_frag_l1_PrositFrag-1024.pth",
-        "pdeep2": "/home/gus/Desktop/ms_pred/checkpoints/best/best_frag_l1_pDeep2-1024.pth"
+        "prosit_l1": "/home/yejb/code_repo/MST/checkpoints/best/best_frag_l1_PrositFrag-1024.pth",
+        "pdeep2": "/home/yejb/code_repo/MST/checkpoints/best/best_frag_l1_pDeep2-1024.pth"
     }
     run_model = model_list[frag_model]()
     run_model.load_state_dict(torch.load(

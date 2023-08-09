@@ -323,7 +323,7 @@ def to_tensor(frag_msms):
 
 def get_irt_all(run_model, data_cand):
     if torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device("cuda:7")
     else:
         device = torch.device("cpu")
 
@@ -355,7 +355,7 @@ def get_irt_all(run_model, data_cand):
 
 def get_sa_all(run_model, data_nce_cand, frag_msms, pearson=False):
     if torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device("cuda:7")
     else:
         device = torch.device("cpu")
 

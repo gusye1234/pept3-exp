@@ -29,14 +29,14 @@ if regenerated_those_three:
     dataset = "Bekker-Jensen"
     frag_model = 'prosit_l1'
     for which in ["trypsin", 'chymo', "lysc", "gluc"]:
-        msms_file = f"/data/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
-        save_tab1 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1/no_finetuned_twofold/sa.tab"
+        msms_file = f"/data2/yejb/prosit/figs/fig235/{which}/maxquant/combined/txt/msms.txt"
+        save_tab1 = f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1/no_finetuned_3fold/sa.tab"
         counts = counting(msms_file, save_tab1)
         fdr_1s = []
         for feat in ['sa', 'prosit_best']:
             for frag_model in ['pdeep2', 'prosit_l1']:
-                save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
-                ft_save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+                save_tab = f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/no_finetuned_3fold/{feat}_target.psms"
+                ft_save_tab = f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_3fold_0.1/{feat}_target.psms"
                 fdr_1s.append(quick_1(save_tab))
                 fdr_1s.append(quick_1(ft_save_tab))
         core_data.append((
@@ -46,15 +46,15 @@ if regenerated_those_three:
     # ------------------
     dataset = "Davis"
     frag_model = 'prosit_l1'
-    msms_file = f"/data/prosit/figs/figure5/maxquant/combined/txt/msms.txt"
-    save_tab1 = save_tab1 = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_twofold/sa.tab"
-    # save_tab2 = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_twofold/sa.tab"
+    msms_file = f"/data2/yejb/prosit/figs/figure5/maxquant/combined/txt/msms.txt"
+    save_tab1 = save_tab1 = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_3fold/sa.tab"
+    # save_tab2 = f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_3fold_0.1/sa.tab"
     counts = counting(msms_file, save_tab1)
     fdr_1s = []
     for feat in ['sa', 'prosit_best']:
         for frag_model in ['pdeep2', 'prosit_l1']:
-            save_tab = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
-            ft_save_tab = f"/data/prosit/figs/figure5/percolator/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+            save_tab = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}/no_finetuned_3fold/{feat}_target.psms"
+            ft_save_tab = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}/finetuned_3fold_0.1/{feat}_target.psms"
             fdr_1s.append(quick_1(save_tab))
             fdr_1s.append(quick_1(ft_save_tab))
     core_data.append((
@@ -64,14 +64,14 @@ if regenerated_those_three:
     dataset = 'Metaproteomics'
     frag_model = 'prosit_l1'
     for which in ["sprot_human", "IGC", "sprot_all", "sprot_bacteria_human"]:
-        msms_file = f"/data/prosit/figs/figure6/{which}/maxquant/txt/msms.txt"
-        save_tab1 = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_twofold/sa.tab"
+        msms_file = f"/data2/yejb/prosit/figs/figure6/{which}/maxquant/txt/msms.txt"
+        save_tab1 = f"/data2/yejb/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_3fold/sa.tab"
         counts = counting(msms_file, save_tab1)
         fdr_1s = []
         for feat in ['sa', 'prosit_best']:
             for frag_model in ['pdeep2', 'prosit_l1']:
-                save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
-                ft_save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+                save_tab = f"/data2/yejb/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_3fold/{feat}_target.psms"
+                ft_save_tab = f"/data2/yejb/prosit/figs/figure6/{which}/percolator/try/{frag_model}/finetuned_3fold_0.1/{feat}_target.psms"
                 fdr_1s.append(quick_1(save_tab))
                 fdr_1s.append(quick_1(ft_save_tab))
         core_data.append((
@@ -116,7 +116,7 @@ for which in tqdm(Mels):
     no_ft_fdr1 = quick_1(
         f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit_target.psms")
     ft_fdr1 = quick_1(
-        f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/percolator_hdf5_Mels_0.1/{which}/prosit_target.psms")
+        f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/3fold_hdf5_0.1/{which}/prosit_target.psms")
     core_data.append((
         which, *counts, no_ft_fdr1, ft_fdr1
     ))

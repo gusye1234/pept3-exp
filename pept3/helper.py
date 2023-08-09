@@ -980,7 +980,8 @@ def fdr_test_nfold(models,
                    msms_file, 
                    raw_dir, save_tab, 
                    id2selects,
-                   sample_size=300000, irt_model=None, need_all=False, totest=None, pearson=False):
+                   sample_size=300000, irt_model=None, need_all=False, totest=None, pearson=False,
+                   best_nce=0.33):
     # pack, msms_name = one_pack_all(
     #     msms_file,
     #     raw_dir,
@@ -1086,7 +1087,7 @@ def fdr_test_nfold(models,
             float(m[0][i_d['Retention time']]) for m in pack]
 
     def add_collision_energy_aligned_normed(pack):
-        Features['collision_energy_aligned_normed'] = 0.33
+        Features['collision_energy_aligned_normed'] = best_nce
 
     def add_KR(pack):
         Features['KR'] = [

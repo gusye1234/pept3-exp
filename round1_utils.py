@@ -37,16 +37,20 @@ def merge_decoy(original_msms_tab,
     if not path.exists(merge_msms):
         shutil.copyfile(ori_msms, merge_msms)
     
-    from_feat_pd = pd.read_csv(from_feat, sep='\t')
-    from_feat_pd = from_feat_pd[from_feat_pd['Label']==-1]
-    from_feat_pd = from_feat_pd.iloc[:sample_num]
     ori_feat_pd = pd.read_csv(ori_feat, sep='\t')
+    all_target_peptides = set(ori_feat_pd[ori_feat_pd['Label']==1]['Peptide'])
+    
+    from_feat_pd = pd.read_csv(from_feat, sep='\t').sample(frac=1).reset_index(drop=True)
+    from_feat_pd = from_feat_pd[from_feat_pd['Label']==-1].reset_index(drop=True)
+    print(f"Total decoy {len(from_feat_pd)}")
+    from_feat_pd = from_feat_pd.iloc[:(sample_num*2)]
     bias = ori_feat_pd['SpecId'].max()
     
     fake_before_ids = set(from_feat_pd['SpecId'].to_list())
+    false_target_ids = set(from_feat_pd.iloc[:sample_num]['SpecId'].to_list())
     from_feat_pd['SpecId'] += bias
     fake_ids = set(from_feat_pd['SpecId'].to_list())
-    from_feat_pd['Label'] = 1
+    from_feat_pd.loc[:sample_num-1, 'Label'] = 1
     print(f"Adding {len(from_feat_pd)} decoys to {len(ori_feat_pd)} target+decoy")
     merge_feat_pd = pd.concat([ori_feat_pd, from_feat_pd],
                               ignore_index=True,
@@ -55,17 +59,24 @@ def merge_decoy(original_msms_tab,
     
     m_r, m_i_delta, m_i = read_m_r_ions(from_ions)
     new_mr, new_mi_delta, new_mi = [], [], []
+    
+    false_target_num, false_decoy_num = 0, 0
     for m1, m2, m3 in tqdm(zip(m_r, m_i_delta, m_i)):
         if int(m1[0][msms_name.index("id")] ) in fake_before_ids:
+            assert len(m1[0][msms_name.index("Reverse")].strip())
+            if int(m1[0][msms_name.index("id")]) in false_target_ids:
+                m1[0][msms_name.index("Reverse")] = ""
+                false_target_num += 1
+            else:
+                false_decoy_num += 1
             m1[0][msms_name.index("id")] = \
             int(m1[0][msms_name.index("id")]) + bias
-            assert len(m1[0][msms_name.index("Reverse")].strip())
-            m1[0][msms_name.index("Reverse")] = ""
             new_mr.append(m1)
             new_mi_delta.append(m2)
             new_mi.append(m3)
+    print(f"Add {false_target_num} false_target, {false_decoy_num} false decoy")
     del m_r, m_i_delta, m_i
-    assert len(new_mr) == sample_num, f"Only {len(new_mr)} is found, expect {sample_num}"
+    assert len(new_mr) == 2*sample_num, f"Only {len(new_mr)} is found, expect {sample_num}"
     ori_ions_obj = read_m_r_ions(ori_ions)
     ori_ions_obj = [o+o1 for o, o1 in zip(ori_ions_obj,
                                           [new_mr, new_mi_delta, new_mi])]

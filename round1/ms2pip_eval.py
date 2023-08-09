@@ -1,6 +1,7 @@
 import os
 import sys
 from time import time
+import numpy as np
 import pandas as pd
 import pickle
 from ms2pip.ms2pipC import MS2PIP
@@ -27,6 +28,12 @@ params = {
      }
  }
 
+show_name = {
+    "trypsin": "Trypsin",
+    "chymo": "Chymo",
+    "lysc": "Lys-C",
+    "gluc": "Glu-C"
+}
 for which in ["trypsin", 'chymo', "lysc", "gluc"]:
     print("Running", which)
     save_tab = f"/data2/yejb/prosit/figs/fig235/{which}/ms2pip"
@@ -82,5 +89,26 @@ for which in ["trypsin", 'chymo', "lysc", "gluc"]:
         for fdr in show_fdr:
             record[name].append((target_tab['q-value'] < fdr).sum())
         print(f"{name}:{time()-start:.1f}", end='-')
+    
+    import matplotlib.pyplot as plt
+    
+    fig, ax = plt.subplots(layout='constrained')
+
+    width = 0.15  # the width of the bars
+    multiplier = 0
+    x = np.arange(len(show_fdr))
+    for attribute, measurement in record.items():
+        if attribute in ["prosit_best", 'fdrs']:
+            continue
+        offset = width * multiplier
+        rects = ax.bar(x + offset, measurement, width, label=attribute)
+        ax.bar_label(rects, padding=3, fontsize=5)
+        multiplier += 1
         
+    ax.set_ylabel('Identified PSMs')
+    ax.set_title(f'Identified PSMs of {show_name[which]} with MS2PIP')
+    ax.set_xticks(x + width, [i*100 for i in show_fdr])
+    ax.set_xlabel("FDR(%)")
+    ax.legend(loc='upper right', ncol=3)
+    fig.savefig(f"./fig/ms2pip_{which}.png", dpi=200)
     print(pd.DataFrame(record))

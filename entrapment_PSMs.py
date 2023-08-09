@@ -81,20 +81,20 @@ def eval_fdr(models, msms_file, raw_dir, save_tab,
     return pd.DataFrame(record)
 
 
-ori_which = "trypsin"
-from_which = "chymo"
-merge_which = "trypsin_chymo"
+ori_which = "chymo"
+from_which = "trypsin"
+merge_which = "chymo_trypsin_2w"
 merge_tab = f"/data2/yejb/prosit/figs/fig235/round1/{merge_which}/"
 if not os.path.exists(merge_tab):
     os.mkdir(merge_tab)
-# merge_decoy(
-#     f"/data2/yejb/prosit/figs/fig235/{ori_which}/maxquant/combined/txt/",
-#     f"/data2/yejb/prosit/figs/fig235/{ori_which}/percolator_up/try/prosit_l1",
-#     f"/data2/yejb/prosit/figs/fig235/{from_which}/maxquant/combined/txt/",
-#     f"/data2/yejb/prosit/figs/fig235/{from_which}/percolator_up/try/prosit_l1",
-#     merge_tab,
-#     sample_num=5000
-# )
+merge_decoy(
+    f"/data2/yejb/prosit/figs/fig235/{ori_which}/maxquant/combined/txt/",
+    f"/data2/yejb/prosit/figs/fig235/{ori_which}/percolator_up/try/prosit_l1",
+    f"/data2/yejb/prosit/figs/fig235/{from_which}/maxquant/combined/txt/",
+    f"/data2/yejb/prosit/figs/fig235/{from_which}/percolator_up/try/prosit_l1",
+    merge_tab,
+    sample_num=20000
+)
 
 
 run_model = model.PrositIRT()
@@ -137,13 +137,13 @@ if __name__ == "__main__":
     tabels_file = fixed_features(msms_file, raw_dir,
                                     f"/data2/yejb/prosit/figs/fig235/round1/{merge_which}")
     save_tab1 = f"/data2/yejb/prosit/figs/fig235/round1/{merge_which}/percolator/before"
-    save_tab2 = f"/data2/yejb/prosit/figs/fig235/round1/{merge_which}/percolator/after"
+    save_tab2 = f"/data2/yejb/prosit/figs/fig235/round1/{merge_which}/percolator/after_{q_threshold}"
     if not os.path.exists(save_tab1):
         os.mkdir(save_tab1)
     if not os.path.exists(save_tab2):
         os.mkdir(save_tab2)
     models, id2selects = finetune.semisupervised_finetune_nfold(
-        run_model, tabels_file, pearson=if_pearson, only_id2select=False, q_threshold=q_threshold, gpu_index=7)
+        run_model, tabels_file, pearson=if_pearson, only_id2select=False, q_threshold=q_threshold, gpu_index=0)
     ori_models = [run_model for _ in models]
     print(eval_fdr(ori_models, msms_file, raw_dir, save_tab1,
           irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson).to_string())

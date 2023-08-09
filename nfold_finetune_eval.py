@@ -166,13 +166,13 @@ if __name__ == "__main__":
             os.mkdir(save_tab1)
         if not os.path.exists(save_tab2):
             os.mkdir(save_tab2)
-        # models, id2selects = finetune.semisupervised_finetune_nfold(
-        #     run_model, tabels_file, pearson=if_pearson, only_id2select=False, q_threshold=q_threshold)
+        models, id2selects = finetune.semisupervised_finetune_nfold(
+            run_model, tabels_file, pearson=if_pearson, only_id2select=False, q_threshold=q_threshold)
         # ori_models = [run_model for _ in models]
         # print(eval_fdr(ori_models, msms_file, raw_dir, save_tab1,
         #       irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson).to_string())
-        # print(eval_fdr(models, msms_file, raw_dir, save_tab2,
-        #       irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson).to_string())
+        print(eval_fdr(models, msms_file, raw_dir, save_tab2,
+              irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson).to_string())
         analysis_dict[which] = overlap_analysis_peptides(save_tab1, save_tab2)
         
     print("-------------------------------")

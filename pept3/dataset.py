@@ -436,6 +436,8 @@ class SemiDataset_twofold:
     def __init__(self, table_input, score_init="andromeda", pi=0.9, rawfile_fiels=None):
         self._file_input = table_input
         self._pi = pi
+        
+        self.best_nce = None
         if not table_input.endswith("hdf5"):
             self._hdf5 = False
             self._data = pd.read_csv(table_input, sep='\t').sample(
@@ -562,6 +564,9 @@ class SemiDataset_twofold:
         q_values = self.q_compute(self._test_scores, self._test_d, self._pi)
         return q_values
 
+    def set_nce(self, nce):
+        self.best_nce = nce
+
     def prepare_sa_data(self, table, frag_msms):
         xlabel = ["sequence_integer",
                   "precursor_charge_onehot",
@@ -590,6 +595,10 @@ class SemiDataset_twofold:
             charges = torch.from_numpy(np.concatenate(charges))
 
         nces = np.array(table['collision_energy_aligned_normed'])
+        # if self.best_nce is None:
+        #     nces = np.array(table['collision_energy_aligned_normed'])
+        # else:
+        #     nces = np.ones_like(table['collision_energy_aligned_normed'])*self.best_nce
         nces = torch.from_numpy(nces).unsqueeze(1)
 
         labels = np.array(table['Label'])
@@ -649,11 +658,14 @@ class SemiDataset_twofold:
         data = [seq_data, charges, nces, y_data, rt, labels]
         return names, data
 
-    def semisupervised_sa_finetune(self, threshold=0.1):
-        q_values = self.q_compute(self._scores, self._d, self._pi)
-        sat_d = self._d[q_values <= threshold]
-        sat_f = self._df[q_values <= threshold]
-        names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+    def semisupervised_sa_finetune(self, threshold=None):
+        if threshold is not None:
+            q_values = self.q_compute(self._scores, self._d, self._pi)
+            sat_d = self._d[q_values <= threshold]
+            sat_f = self._df[q_values <= threshold]
+            names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+        else:
+            names, data_sa = self.prepare_sa_data(self._d, self._df)
         return FinetuneTableDataset(names, data_sa)
 
     def semisupervised_sa_finetune_rank(self, threshold=0.1):

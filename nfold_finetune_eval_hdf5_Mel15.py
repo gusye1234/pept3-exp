@@ -81,9 +81,9 @@ with open(f'logs/2020-mel15-{set_threshold}-{now}.log', 'w') as sys.stdout:
         models, id2select = finetune.semisupervised_finetune_nfold(
             run_model, tabels_file, pearson=if_pearson, gpu_index=gpu_index, only_id2select=False, q_threshold=set_threshold)
 
-        # for i, m in enumerate(models):
-            # torch.save(m.state_dict(),
-            #            os.path.join(model_saving_path, f"{frag_model}_part_{i}.pth"))
+        for i, m in enumerate(models):
+            torch.save(m.state_dict(),
+                       os.path.join(model_saving_path, f"{frag_model}_part_{i}.pth"))
         # for i, m  in enumerate(models):
         #     m.load_state_dict(torch.load(os.path.join(model_saving_path, f"{frag_model}_part_{i}.pth"), map_location="cpu"))
         

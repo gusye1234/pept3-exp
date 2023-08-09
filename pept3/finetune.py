@@ -468,7 +468,11 @@ def semisupervised_finetune_nfold(ori_model, input_table, batch_size=1024, gpu_i
     else:
         device = torch.device("cpu")
     print(
-        f"Run on {device}, nfold = {nfold},with training-q {q_threshold}, valid-q {validate_q_threshold}, epoch {max_epochs}")
+        f"Run on {device}, nfold = {nfold},with training-q {q_threshold}, valid-q {validate_q_threshold}, epoch {max_epochs}"
+    )
+
+    def ce_caliration(dataset):
+        pass
 
     def finetune(dataset: SemiDataset_twofold):
         model = deepcopy(ori_model)
