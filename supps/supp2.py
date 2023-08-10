@@ -22,15 +22,15 @@ for which, save_name in zip(["trypsin", 'chymo', "lysc", "gluc"], ["Trypsin", 'C
     assembles = {}
     for frag_model in MODELS:
         for feat in FEATS:
-            save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
-            ft_save_tab = f"/data/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+            save_tab = f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/no_finetuned_3fold/{feat}_target.psms"
+            ft_save_tab = f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_3fold_0.1/{feat}_target.psms"
             assembles[f"{frag_model}-{feat}-noft"] = pd.read_csv(
                 save_tab, sep='\t')
             assembles[f"{frag_model}-{feat}-ft"] = pd.read_csv(
                 ft_save_tab, sep='\t')
 
     andromeda = pd.read_csv(
-        f"/data/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1/no_finetuned_twofold/andromeda_target.psms", sep='\t')
+        f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/prosit_l1/no_finetuned_3fold/andromeda_target.psms", sep='\t')
     ok_ids = set(andromeda[andromeda['q-value'] < 0.01]['PSMId'])
     allow_ids = set(andromeda['PSMId'])
     for k, v in assembles.items():

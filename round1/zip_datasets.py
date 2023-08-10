@@ -35,17 +35,18 @@ def zipdir(path, ziph,
 #         zipdir(save_tab, zipf)
 
 
-# for which in ["sprot_human", "IGC", "sprot_all", "sprot_bacteria_human"]:
-#     print("-------------------------------")
-#     print(which)
-#     root_dir = f"/data2/yejb/prosit/figs/figure6/{which}"
+for which in ["sprot_human", "IGC", "sprot_all", "sprot_bacteria_human"]:
+    print("-------------------------------")
+    print(which)
+    root_dir = f"/data2/yejb/prosit/figs/figure6/{which}"
     
-#     with zipfile.ZipFile(f"/data2/yejb/prosit/figs/figure6/meta-{which}.zip", 'w') as zipf:
-#         zipdir(root_dir, zipf)    
+    with zipfile.ZipFile(f"/data2/yejb/prosit/figs/figure6/meta-{which}.zip", 'w') as zipf:
+        zipdir(root_dir, zipf,
+               root_name = ["no_finetuned_3fold", "finetuned_3fold"],)    
 
-root_dir = f"/data2/yejb/prosit/figs/figure5/"
-with zipfile.ZipFile(f"/data2/yejb/prosit/figs/figure5/davis.zip", 'w') as zipf:
-    zipdir(root_dir, zipf)    
+# root_dir = f"/data2/yejb/prosit/figs/figure5/"
+# with zipfile.ZipFile(f"/data2/yejb/prosit/figs/figure5/davis.zip", 'w') as zipf:
+#     zipdir(root_dir, zipf)    
 # hla_mel = pd.read_csv("../figs/data/HLA_Mel.csv")
 # hla_mel = hla_mel[hla_mel['Experiment'].apply(lambda x: x.endswith("HLA-I"))]
 # Mels = hla_mel['Experiment'].unique()

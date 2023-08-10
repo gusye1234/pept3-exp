@@ -116,7 +116,7 @@ for which in tqdm(Mels):
     no_ft_fdr1 = quick_1(
         f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/forPride/rescoring_for_paper_2/Mels/{which}/percolator/prosit_target.psms")
     ft_fdr1 = quick_1(
-        f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/3fold_hdf5_0.1/{which}/prosit_target.psms")
+        f"/data/yejb/prosit/figs/boosting/figs/Figure_5_HLA_1/prosit_hcd/3fold_Mels_0.1/{which}/prosit_target.psms")
     core_data.append((
         which, *counts, no_ft_fdr1, ft_fdr1
     ))
@@ -134,13 +134,13 @@ with open("../figs/data/allele_raw.txt") as f:
         alleles_rawfile[pack[0]] = set(pack[1:])
 Alleles = sorted(alleles_rawfile.keys())
 for which in tqdm(Alleles):
-    origin_prosit_tab = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/prosit.tab"
-    msms_file = f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/msms.txt"
+    origin_prosit_tab = f"/data2/yejb/prosit/figs/alleles/forPRIDE/Alleles/{which}/percolator/prosit.tab"
+    msms_file = f"/data2/yejb/prosit/figs/alleles/forPRIDE/Alleles/{which}/msms.txt"
     counts = counting(msms_file, origin_prosit_tab)
     no_ft_fdr1 = quick_1(
-        f"/data1/yejb/prosit/figure3/forPRIDE/Alleles/{which}/percolator/prosit_target.psms")
+        f"/data2/yejb/prosit/figs/alleles/forPRIDE/Alleles/{which}/percolator/prosit_target.psms")
     ft_fdr1 = quick_1(
-        f"/data1/yejb/prosit/figure3/percolator_hdf5_allele_0.1/{which}/prosit_target.psms")
+        f"/data1/yejb/prosit/figure3/prosit_hcd/3fold_hdf5_allele_0.1/{which}/prosit_target.psms")
     core_data.append((
         which, *counts, no_ft_fdr1, ft_fdr1
     ))

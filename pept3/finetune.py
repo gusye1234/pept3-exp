@@ -10,7 +10,7 @@ import sys
 from tqdm import tqdm
 import numpy as np
 from . import helper
-from .dataset import FragDataset, IrtDataset, SemiDataset, SemiDataset_twofold, SemiDataset_nfold
+from .dataset import FragDataset, IrtDataset, SemiDataset, SemiDataset_twofold, SemiDataset_nfold, pDeep_nfold
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -586,6 +586,89 @@ def semisupervised_finetune_nfold(ori_model, input_table, batch_size=1024, gpu_i
     return models, id2select
 
 
+# adapted from https://github.com/pFindStudio/pDeep3
+def pdeep3_few_shot_score(ori_model, input_table, batch_size=1024, gpu_index=0, max_epochs=100, nfold=3,
+                          update_interval=1, q_threshold=0.1, validate_q_threshold=0.01, pearson=False,
+                          enable_test=False, only_id2select=False, onlypos=False):
+    helper.set_seed(2022)
+    if torch.cuda.is_available():
+        device = torch.device(f"cuda:{gpu_index}")
+    else:
+        device = torch.device("cpu")
+    print(
+        f"Run on {device}, nfold = {nfold}, max_sample=100"
+    )
+
+    def ce_caliration(dataset):
+        pass
+
+    def finetune(dataset: pDeep_nfold):
+        model = deepcopy(ori_model)
+        model = model.train()
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, eps=1e-8)
+        if not onlypos:
+            loss_fn = helper.FinetuneSALoss(pearson=pearson)
+        else:
+            loss_fn = helper.FinetuneSALossNoneg(pearson=pearson)
+        model = model.to(device)
+        
+        ori_q_values = dataset.Q_values()
+        print(f">>Baseline Andromeda({len(ori_q_values)}): ", end='')
+        print(np.sum(ori_q_values < 0.001), np.sum(
+            ori_q_values < 0.01), np.sum(ori_q_values < 0.1))
+        best_model = None
+        best_q_value_num = 0
+        
+
+        scores = dataset.pdeep_train_score()
+        dataset.assign_train_score(scores)
+        # q_values_num = np.sum(q_values < validate_q_threshold)
+        train_loader = DataLoader(dataset.pdeep3_finetune(max_sample=100), 
+                                  batch_size=batch_size, 
+                                  shuffle=True)
+        for epoch in range(max_epochs):
+            loss = 0
+            loss_l1 = 0.
+            loss_sa = 0.
+                # train_loader = DataLoader(dataset.semisupervised_sa_finetune_noneg(
+                # ), batch_size=batch_size, shuffle=True)
+            for i, data in enumerate(train_loader):
+                train_count = i + 1
+                data = {k: v.to(device) for k, v in data.items()}
+                data["peptide_mask"] = helper.create_mask(
+                    data['sequence_integer'])
+                pred = model(data)
+                loss_b, fine_loss, l1_loss = loss_fn(
+                    data['intensities_raw'], pred, data['label'])
+                optimizer.zero_grad()
+                loss_b.backward()
+                optimizer.step()
+                sys.stdout.flush()
+                
+                loss += loss_b.item()
+                loss_l1 += l1_loss
+                loss_sa += fine_loss
+                # print(f"{loss_b.item():.6f}\b", end=' ')
+        # if np.sum(ori_q_values < validate_q_threshold) > best_q_value_num:
+        #     del best_model
+        #     best_model = deepcopy(ori_model)
+        #     print("Bad fine-tuning results, roll back to the original")
+        return model
+
+    dataset_manager = pDeep_nfold(input_table, nfold=nfold)
+    
+    id2select = dataset_manager.id2predict()
+    if only_id2select:
+        return [ori_model for _ in range(nfold)], id2select
+    
+    models = []
+    for i in range(nfold):
+        dataset_manager.set_index(i)
+        print(f">>Running fold-{i}, train set {len(dataset_manager._d)}, test set {len(dataset_manager._test_d)}")
+        model = finetune(dataset_manager)
+        models.append(model)
+    return models, id2select
+
 if __name__ == "__main__":
     from . import model
     which = 'lysc'
@@ -610,242 +693,3 @@ if __name__ == "__main__":
     # semisupervised_single_finetune(run_model, data_file)
 
 
-# def semisupervised_single_finetune(model, input_table, batch_size=512, gpu_index=0, max_epochs=10, update_interval=1, q_threshold=0.1):
-#     helper.set_seed(2022)
-#     if torch.cuda.is_available():
-#         device = torch.device(f"cuda:{gpu_index}")
-#     else:
-#         device = torch.device("cpu")
-#     print("Run on", device)
-
-#     model = deepcopy(model)
-#     model = model.train()
-#     train_data = SemiDataset(input_table)
-#     infer_loader = DataLoader(
-#         train_data.supervised_sa_finetune(), batch_size=batch_size, shuffle=False)
-
-#     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, eps=1e-8)
-#     loss_fn = helper.FinetuneComplexSALoss()
-#     model = model.to(device)
-
-#     q_values = train_data.Q_values()
-#     print("Baseline Andromeda:")
-#     print(np.sum(q_values < 0.001), np.sum(
-#         q_values < 0.01), np.sum(q_values < 0.1))
-#     train_loader = DataLoader(train_data.semisupervised_finetune(
-#         threshold=q_threshold), batch_size=batch_size, shuffle=True)
-#     for epoch in range(max_epochs):
-#         # print(f"Iteration [{epoch:2d}/{max_epochs:2d}]")
-#         loss = 0
-#         loss_l1 = 0.
-#         loss_sa = 0.
-#         if (epoch % update_interval) == 0 and epoch != 0:
-#             with torch.no_grad():
-#                 scores = []
-#                 for i, data in enumerate(infer_loader):
-#                     data = {k: v.to(device) for k, v in data.items()}
-#                     score = model(data)
-#                     scores.append(score.detach().cpu().numpy())
-#                 scores = np.concatenate(scores, axis=0)
-#                 train_data.assign_train_score(scores)
-#             q_values = train_data.Q_values()
-#             print(np.sum(q_values < 0.001), np.sum(
-#                 q_values < 0.01), np.sum(q_values < 0.1))
-#             # train_loader = DataLoader(train_data.semisupervised_finetune(
-#             #     threshold=q_threshold), batch_size=batch_size, shuffle=True)
-#         for i, data in enumerate(train_loader):
-#             train_count = i+1
-#             data = {k: v.to(device) for k, v in data.items()}
-#             score = model(data)
-#             loss_b = loss_fn(score, data['label'])
-#             optimizer.zero_grad()
-#             loss_b.backward()
-#             optimizer.step()
-#             sys.stdout.flush()
-#             print(
-#                 f"\r    -Train Loss {loss/train_count:.3f}, {loss_l1/train_count:.3f}, {loss_sa/train_count:.3f}", end="")
-#             loss += loss_b.item()
-#         print()
-#     q_values = train_data.Q_values()
-#     print(np.sum(q_values < 0.001), np.sum(
-#         q_values < 0.01), np.sum(q_values < 0.1))
-#     return model, train_data.id2remove()
-
-
-# def semisupervised_pair_finetune(model, input_table, batch_size=1024, gpu_index=0, max_epochs=20, update_interval=1, q_threshold=0.1):
-#     helper.set_seed(2022)
-#     if torch.cuda.is_available():
-#         device = torch.device(f"cuda:{gpu_index}")
-#     else:
-#         device = torch.device("cpu")
-#     print("Run on", device)
-
-#     model = deepcopy(model)
-#     model = model.train()
-#     train_data = SemiDataset(input_table)
-#     infer_loader = DataLoader(
-#         train_data.supervised_sa_finetune(), batch_size=batch_size, shuffle=False)
-
-#     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, eps=1e-8)
-#     loss_fn = helper.FinetunePairSALoss()
-#     model = model.to(device)
-
-#     q_values = train_data.Q_values()
-#     print("Baseline: ", end='')
-#     print(np.sum(q_values < 0.001), np.sum(
-#         q_values < 0.01), np.sum(q_values < 0.1))
-#     for epoch in tqdm(range(max_epochs)):
-#         # print(f"Iteration [{epoch:2d}/{max_epochs:2d}]")
-#         loss = 0
-#         loss_l1 = 0.
-#         loss_sa = 0.
-#         if (epoch % update_interval) == 0:
-#             with torch.no_grad():
-#                 scores = []
-#                 for i, data in enumerate(infer_loader):
-#                     data = {k: v.to(device) for k, v in data.items()}
-#                     pred = model(data)
-#                     sas = helper.spectral_angle(data['intensities_raw'], pred)
-#                     scores.append(sas.detach().cpu().numpy())
-#                 scores = np.concatenate(scores, axis=0)
-#                 train_data.assign_train_score(scores)
-#             train_loader = DataLoader(train_data.semisupervised_pair_sa_finetune(
-#                 threshold=q_threshold), batch_size=batch_size, shuffle=True)
-#         for i, data in enumerate(train_loader):
-#             train_count = i+1
-#             data = {k: v.to(device) for k, v in data.items()}
-#             neg_data = {k[:-4]: v for k,
-#                         v in data.items() if k.endswith("_neg")}
-#             pred = model(data)
-#             pred_neg = model(neg_data)
-#             loss_b, fine_loss, l1_loss = loss_fn(
-#                 data['intensities_raw'], pred, data['intensities_raw_neg'], pred_neg)
-#             optimizer.zero_grad()
-#             loss_b.backward()
-#             optimizer.step()
-#             sys.stdout.flush()
-#             print(
-#                 f"\r    -Train Loss {loss/train_count:.3f}, {loss_l1/train_count:.3f}, {loss_sa/train_count:.3f}", end="")
-#             loss += loss_b.item()
-#             loss_l1 += l1_loss
-#             loss_sa += fine_loss
-#         print()
-#     q_values = train_data.Q_values()
-#     print(np.sum(q_values < 0.001), np.sum(
-#         q_values < 0.01), np.sum(q_values < 0.1))
-#     return model, train_data.id2remove()
-
-
-# def semisupervised_rt_finetune(model, input_table, batch_size=2048, gpu_index=0, max_epochs=10, update_interval=1, q_threshold=0.1):
-#     helper.set_seed(2022)
-#     if torch.cuda.is_available():
-#         device = torch.device(f"cuda:{gpu_index}")
-#     else:
-#         device = torch.device("cpu")
-#     print("Run on", device)
-
-#     model = deepcopy(model)
-#     model = model.train()
-#     train_data = SemiDataset(input_table)
-#     infer_loader = DataLoader(
-#         train_data.supervised_sa_finetune(), batch_size=batch_size, shuffle=False)
-
-#     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, eps=1e-8)
-#     loss_fn = helper.FinetuneRTLoss()
-#     model = model.to(device)
-
-#     q_values = train_data.Q_values()
-#     print("Baseline Andromeda:")
-#     print(np.sum(q_values < 0.001), np.sum(
-#         q_values < 0.01), np.sum(q_values < 0.1))
-#     train_loader = DataLoader(train_data.semisupervised_RT_finetune(
-#         threshold=q_threshold), batch_size=batch_size, shuffle=True)
-#     for epoch in tqdm(range(max_epochs)):
-#         loss = 0
-#         loss_l1 = 0.
-#         loss_sa = 0.
-#         # if (epoch % update_interval) == 0:
-#         #     with torch.no_grad():
-#         #         scores = []
-#         #         for i, data in enumerate(infer_loader):
-#         #             data = {k: v.to(device) for k, v in data.items()}
-#         #             pred = model(data)
-#         #             sas = helper.spectral_angle(data['intensities_raw'], pred)
-#         #             scores.append(sas.detach().cpu().numpy())
-#         #         scores = np.concatenate(scores, axis=0)
-#         #         train_data.assign_train_score(scores)
-#         #     train_loader = DataLoader(train_data.semisupervised_sa_finetune(threshold=q_threshold), batch_size=batch_size, shuffle=True)
-#         for i, data in enumerate(train_loader):
-#             train_count = i+1
-#             data = {k: v.to(device) for k, v in data.items()}
-#             pred = model(data)
-#             loss_b, fine_loss, l1_loss = loss_fn(
-#                 data['irt'], pred, data['label'])
-#             optimizer.zero_grad()
-#             loss_b.backward()
-#             optimizer.step()
-#             sys.stdout.flush()
-#             print(
-#                 f"\r    -Train Loss {loss/train_count:.3f}, {loss_l1/train_count:.3f}, {loss_sa/train_count:.3f}", end="")
-#             loss += loss_b.item()
-#             loss_l1 += l1_loss
-#             loss_sa += fine_loss
-#         print()
-#     # q_values = train_data.Q_values()
-#     # print(np.sum(q_values < 0.001), np.sum(
-#     #     q_values < 0.01), np.sum(q_values < 0.1))
-#     return model, train_data.id2remove()
-
-# def supervised_finetune(model, input_table, batch_size=2048, gpu_index=0, max_epochs=10, threshold=None):
-#     if torch.cuda.is_available():
-#         device = torch.device(f"cuda:{gpu_index}")
-#     else:
-#         device = torch.device("cpu")
-#     print("Run on", device)
-
-#     model = deepcopy(model)
-#     model = model.train()
-#     train_data = SemiDataset(input_table)
-#     train_loader = DataLoader(
-#         train_data.supervised_sa_finetune(), batch_size=batch_size, shuffle=True)
-#     infer_loader = DataLoader(
-#         train_data.supervised_sa_finetune(), batch_size=batch_size, shuffle=False)
-
-#     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001, eps=1e-8)
-#     loss_fn = helper.FinetuneSALoss()
-#     model = model.to(device)
-#     for epoch in range(max_epochs):
-#         loss = 0
-#         loss_l1 = 0.
-#         loss_sa = 0.
-#         print(f"Iteration [{epoch:2d}/{max_epochs:2d}]")
-#         with torch.no_grad():
-#             scores = []
-#             print("Inferring")
-#             for i, data in enumerate(infer_loader):
-#                 data = {k: v.to(device) for k, v in data.items()}
-#                 pred = model(data)
-#                 sas = helper.spectral_angle(data['intensities_raw'], pred)
-#                 scores.append(sas.detach().cpu().numpy())
-#             scores = np.concatenate(scores, axis=0)
-#             train_data.assign_train_score(scores)
-#             q_values = train_data.Q_values()
-#             print(np.sum(q_values < 0.001), np.sum(
-#                 q_values < 0.01), np.sum(q_values < 0.1))
-#         for i, data in enumerate(train_loader):
-#             train_count = i+1
-#             data = {k: v.to(device) for k, v in data.items()}
-#             pred = model(data)
-#             loss_b, fine_loss, l1_loss = loss_fn(
-#                 data['intensities_raw'], pred, data['label'])
-#             optimizer.zero_grad()
-#             loss_b.backward()
-#             optimizer.step()
-#             sys.stdout.flush()
-#             print(
-#                 f"\r    -Train Loss {loss/train_count:.3f}, {loss_l1/train_count:.3f}, {loss_sa/train_count:.3f}", end="")
-#             loss += loss_b.item()
-#             loss_l1 += l1_loss
-#             loss_sa += fine_loss
-#         print()
-#     return model

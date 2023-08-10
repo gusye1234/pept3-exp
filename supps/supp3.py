@@ -11,7 +11,7 @@ def get_q_values(feat_tab: pd.DataFrame, ids):
     return filter_tab
 
 
-FEATS = ['sa', 'prosit_best']
+FEATS = ['sa', 'prosit_combined']
 MODELS = ['pdeep2', 'prosit_l1']
 
 writer = pd.ExcelWriter("data/supp3.xlsx", engine='openpyxl')
@@ -22,15 +22,15 @@ for which, save_name in zip(["sprot_human", "IGC", "sprot_all", "sprot_bacteria_
     assembles = {}
     for frag_model in MODELS:
         for feat in FEATS:
-            save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_twofold/{feat}_target.psms"
-            ft_save_tab = f"/data/prosit/figs/figure6/{which}/percolator/try/{frag_model}/finetuned_twofold/{feat}_target.psms"
+            save_tab = f"/data2/yejb/prosit/figs/figure6/{which}/percolator/try/{frag_model}/no_finetuned_3fold/{feat}_target.psms"
+            ft_save_tab = f"/data2/yejb/prosit/figs/figure6/{which}/percolator/try/{frag_model}/finetuned_3fold/{feat}_target.psms"
             assembles[f"{frag_model}-{feat}-noft"] = pd.read_csv(
                 save_tab, sep='\t')
             assembles[f"{frag_model}-{feat}-ft"] = pd.read_csv(
                 ft_save_tab, sep='\t')
 
     andromeda = pd.read_csv(
-        f"/data/prosit/figs/figure6/{which}/percolator/try/prosit_l1/no_finetuned_twofold/andromeda_target.psms", sep='\t')
+        f"/data2/yejb/prosit/figs/figure6/{which}/percolator/try/prosit_l1/no_finetuned_3fold/andromeda_target.psms", sep='\t')
     ok_ids = set(andromeda[andromeda['q-value'] < 0.01]['PSMId'])
     allow_ids = set(andromeda['PSMId'])
     for k, v in assembles.items():

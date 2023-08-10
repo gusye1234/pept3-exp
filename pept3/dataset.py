@@ -867,8 +867,43 @@ class SemiDataset_nfold(SemiDataset_twofold):
                 predictable_ids.append(test_d.index.values)
         return predictable_ids
 
+class pDeep_nfold(SemiDataset_nfold):
+    
+    def pdeep_train_score(self):
+        total_len = len(self._df)
+        frag_msms = self._df.reshape(total_len, 29, 2, 3)
 
-
+        pep_len = self._d['sequence_length'].to_list()
+        pep_len = np.array(pep_len)
+        
+        b_ions = frag_msms[:, :, 0, :].reshape(total_len, -1)
+        y_ions = frag_msms[:, :, 1, :].reshape(total_len, -1)
+        
+        scores = []
+        for i in range(total_len):
+            bion = b_ions[i]
+            yion = y_ions[i]
+            if self._d.iloc[i]['Label'] == -1:
+                scores.append(-float("inf"))
+                continue
+            s1 = np.log(
+                np.sum(bion[bion > 0]) * np.sum(bion > 0)/pep_len[i] + 1e-7
+            )
+            s2 = np.log(
+                np.sum(yion[yion > 0]) * np.sum(yion > 0)/pep_len[i] + 1e-7
+            )
+            scores.append(s1+s2)
+        return scores
+    
+    
+    def pdeep3_finetune(self, max_sample=100):
+        max_sample_index = np.argsort(self._scores)[-max_sample:]
+        sat_d = self._d.iloc[max_sample_index]
+        sat_f = self._df[max_sample_index]
+        assert all(sat_d['Label'].apply(lambda x: x==1)), f"Target PSMs is lower than {max_sample}"
+        names, data_sa = self.prepare_sa_data(sat_d, sat_f)
+        return FinetuneTableDataset(names, data_sa)
+    
 class FinetuneTableDataset(Dataset):
     def __init__(self, names, xs):
         self.x = xs
