@@ -11,7 +11,7 @@ from pept3 import finetune
 from pept3.helper import fixed_features, fdr_test_nfold
 
 
-def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["prosit_combined", "prosit_best"]):
+def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["prosit_combined", "prosit_combined"]):
     baseline = "sa"
     table1 = pd.read_csv(os.path.join(
         tab1, f"{compare[0]}_target.psms"), sep='\t')
@@ -27,7 +27,7 @@ def overlap_analysis(tab1, tab2, testfdr=0.01, compare=["prosit_combined", "pros
     return len(id1) - len(overlap), len(overlap), len(id2) - len(overlap)
 
 
-def overlap_analysis_peptides(tab1, tab2, testfdr=0.01, compare=["prosit_combined", "prosit_best"]):
+def overlap_analysis_peptides(tab1, tab2, testfdr=0.01, compare=["sa", "sa"]):
     baseline = "sa"
     table1 = pd.read_csv(os.path.join(
         tab1, f"{compare[0]}_target.psms"), sep='\t')
@@ -153,8 +153,7 @@ if __name__ == "__main__":
     #           irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson).to_string())
     #     analysis_dict[which] = overlap_analysis_peptides(save_tab1, save_tab2)
         
-    # for which in ["trypsin", 'chymo', "lysc", "gluc"]:
-    for which in ['chymo', "lysc", "gluc"]:
+    for which in ["trypsin", 'chymo', "lysc", "gluc"]:
     # for which in ["trypsin", 'lysc']:
         print("-------------------------------")
         print(which)
@@ -173,15 +172,17 @@ if __name__ == "__main__":
             os.mkdir(save_tab1)
         if not os.path.exists(save_tab2):
             os.mkdir(save_tab2)
-        models, id2selects = finetune.pdeep3_few_shot_score(
-            run_model, tabels_file, pearson=if_pearson, only_id2select=False, q_threshold=q_threshold)
-        ori_models = [run_model for _ in models]
-        print(eval_fdr(ori_models, msms_file, raw_dir, save_tab1,
-              irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson, overwrite=False).to_string())
-        print(eval_fdr(models, msms_file, raw_dir, save_tab2,
-              irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson).to_string())
-        # analysis_dict[which] = overlap_analysis_peptides(save_tab1, save_tab2)
+        # models, id2selects = finetune.pdeep3_few_shot_score(
+        #     run_model, tabels_file, pearson=if_pearson, only_id2select=False, q_threshold=q_threshold)
+        # ori_models = [run_model for _ in models]
+        # print(eval_fdr(ori_models, msms_file, raw_dir, save_tab1,
+        #       irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson, overwrite=False).to_string())
+        # print(eval_fdr(models, msms_file, raw_dir, save_tab2,
+        #       irt_model=prosit_irt, sample_size=sample_size, id2selects=id2selects, pearson=if_pearson).to_string())
         
+        # analysis_dict[which] = overlap_analysis_peptides(save_tab1, save_tab2)
+        analysis_dict[which] = overlap_analysis_peptides(save_tab2, f"/data2/yejb/prosit/figs/fig235/{which}/percolator_up/try/{frag_model}/finetuned_3fold_{q_threshold}")
+    print(analysis_dict)
 #     print("-------------------------------")
 #     print("Davis")
 #     save_tab = f"/data2/yejb/prosit/figs/figure5/percolator/try/{frag_model}"
